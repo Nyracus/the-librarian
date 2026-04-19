@@ -1,0 +1,65 @@
+# =============================================================================
+# Firebase Data Connect — GraphQL schema (PostgreSQL / Cloud SQL)
+# Project: The Librarian — thesis + telemetry
+#
+# Paste this into Gemini / Firebase Data Connect schema editor, then adjust
+# names to match your generated service layout. Your web app currently writes
+# the same fields to Firestore collection "events"; this table is the SQL twin.
+# =============================================================================
+
+# Optional: study cohort tag you assign manually after signup (e.g. P01).
+# Link row to Firebase Auth uid when you know it.
+type StudyParticipant @table(name: "study_participant", key: "id") {
+  id: UUID! @default(expr: "uuidV4()")
+  authUid: String! @unique @col(dataType: "varchar(128)")
+  cohortCode: String @col(dataType: "varchar(32)")
+  notes: String
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+# One row per gameplay / research event (screen, answer, puzzle action, etc.)
+type GameEvent @table(name: "game_event", key: "id") {
+  id: UUID! @default(expr: "uuidV4()")
+
+  # Firebase Authentication
+  authUid: String! @col(dataType: "varchar(128)")
+  authEmail: String @col(dataType: "varchar(320)")
+
+  # Typed-in participant id from the app (may match cohortCode later)
+  participantId: String @col(dataType: "varchar(64)")
+  condition: String @col(dataType: "varchar(32)")
+  phase: String @col(dataType: "varchar(64)")
+
+  screenId: String @col(dataType: "varchar(128)")
+  itemId: String @col(dataType: "varchar(256)")
+
+  # e.g. politics | geography | explore | shell | general | vocabulary | …
+  domain: String! @col(dataType: "varchar(32)")
+
+  # Store logEvent `response` as JSON text from the client (JSON.stringify)
+  responseJson: String @col(dataType: "text")
+
+  correctness: Boolean
+  responseTimeMs: Int
+
+  # Idempotency / dedupe with browser localStorage log id
+  clientLocalId: String @col(dataType: "varchar(160)")
+
+  # ISO string from client when event occurred (optional)
+  clientTimestamp: Timestamp
+
+  serverCreatedAt: Timestamp! @default(expr: "request.time")
+}
+
+# -----------------------------------------------------------------------------
+# Notes for Gemini / implementers
+# -----------------------------------------------------------------------------
+# - Mutations: insertGameEvent (or auto-generated createGameEvent) should set
+#   authUid from auth.uid in secure rules, not from untrusted client-only apps
+#   unless you validate in a Cloud Function.
+# - Add @unique on (authUid, clientLocalId) later if you migrate from Firestore
+#   and want deduplication at the DB layer.
+# - For aggregations ("% took path X"), query GameEvent grouped by domain,
+#   screenId, itemId, and keys inside responseJson (or normalize paths into
+#   dedicated columns in a later migration).
+# -----------------------------------------------------------------------------

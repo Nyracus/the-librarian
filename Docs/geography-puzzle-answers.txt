@@ -1,0 +1,45 @@
+Geography Wing Puzzle Answers (current code state)
+
+Coordinates are 1-based: (x, y) = (column, row).
+
+==================================================
+Puzzle 1 — The First Leak
+==================================================
+Fixed:
+- Start: (1,1)
+- End: (4,4)
+- Blocked: (2,2)
+
+Place exactly these:
+1) (2,1) = straight, rotation 0
+2) (3,1) = corner, rotation 90
+3) (3,2) = straight, rotation 90
+4) (3,3) = straight, rotation 90
+5) (3,4) = corner, rotation 270
+
+==================================================
+Puzzle 2 — Beneath the Surface (puzzle id: geo_p2_unique)
+==================================================
+Fixed:
+- Start: (1,3)
+- End: (6,2) — accepts flow from below only (south into end)
+- Sand entry A: (3,3) — enter from the west
+- Sand exit A: (5,1) — exit south
+- Blocked: (2,2), (2,4), (4,3), (4,2), (4,4)
+
+Inventory (6 pieces; place exactly 4 to win):
+- Straight ×2 (s1, s2), Corner ×3 (c1–c3), T trap ×1 (t1)
+- Unused: one corner + T
+
+Exact winning placements (engine rotations; tileTypes.js: straight 0 = vertical N–S, 90 = horizontal E–W):
+1) (2,3) = s1 straight, rotation 90
+2) (5,2) = s2 straight, rotation 0
+3) (5,3) = c1 corner, rotation 0
+4) (6,3) = c2 corner, rotation 270
+
+Win rule: exact cell + rotation + inventory id match AND valid flow to end (no partial layout wins).
+
+Flow (1-based):
+(1,3) → (2,3) → (3,3) sand → teleport (5,1) → (5,2) → (5,3) → (6,3) → (6,2) end
+
+Note: Spec “corner 270 / 180” in some design docs referred to a different rotation origin; the code enforces the rotations listed above.

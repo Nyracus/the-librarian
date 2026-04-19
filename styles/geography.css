@@ -1,0 +1,706 @@
+/* Pixel / Stardew-inspired placeholders — crisp edges, no smooth scaling on tiles */
+
+.pixel-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 4px solid #5c4033;
+  box-shadow: 0 8px 0 #2d1b0e;
+  max-width: 100%;
+  height: auto;
+}
+
+.geography-game-root {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.geo-hub-hint,
+.geo-wing-back {
+  margin-top: 0.5rem;
+}
+
+.geo-wing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.geo-hub-wrap,
+.geo-wing-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.puzzle-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Body-mounted modal: above touch (45), pause (48), menu (50), header (10). */
+  z-index: 200;
+  padding: 1rem;
+  animation: geoFadeIn 200ms ease;
+}
+
+.puzzle-scene {
+  background: linear-gradient(180deg, #1e2d1e, #0f172a);
+  border: 4px solid #6b7280;
+  border-radius: 4px;
+  padding: 1rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.puzzle-scene--non-narrative {
+  max-width: 680px;
+}
+
+.puzzle-scene__instr p {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  line-height: 1.45;
+}
+
+.puzzle-scene__instr p:last-child {
+  margin-bottom: 0;
+}
+
+.puzzle-scene__instr kbd {
+  display: inline-block;
+  padding: 0.08em 0.35em;
+  font-size: 0.72rem;
+  font-family: ui-monospace, monospace;
+  background: #111827;
+  border: 1px solid #4b5563;
+  border-radius: 4px;
+  color: #e5e7eb;
+}
+
+.puzzle-scene__panels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  justify-content: center;
+  align-items: flex-start;
+  margin-bottom: 0.35rem;
+}
+
+.puzzle-scene__ref-block,
+.puzzle-scene__play-block {
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+
+.puzzle-scene__ref-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #a5b4fc;
+}
+
+.geo-grid--reference {
+  user-select: none;
+}
+
+.geo-tile--reference {
+  width: 56px;
+  height: 56px;
+  border: 2px solid #374151;
+  background: #0f172a;
+  color: #94a3b8;
+  font-family: ui-monospace, monospace;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  image-rendering: pixelated;
+}
+
+/* Geography wing river PNG tiles — see src/assets/geoRiverTileset.js */
+.geo-tile--river-pack {
+  overflow: hidden;
+}
+
+.geo-tile__inner--river-pack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  transform: rotate(var(--geo-river-rot, 0deg));
+  transform-origin: center center;
+  pointer-events: none;
+}
+
+.geo-tile__img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  image-rendering: crisp-edges;
+}
+
+.geo-tile__inner--missing .geo-tile__img {
+  display: none;
+}
+
+.geo-tile__inner--missing {
+  min-height: 100%;
+  background: repeating-linear-gradient(
+    -45deg,
+    #374151,
+    #374151 5px,
+    #1f2937 5px,
+    #1f2937 10px
+  );
+}
+
+.geo-tile--selected {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+  border-color: #fbbf24;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.35);
+}
+
+.puzzle-scene__rotate-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+  justify-content: center;
+}
+
+.puzzle-scene__title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e5e7eb;
+}
+
+.puzzle-scene__instr,
+.puzzle-scene__mid {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.puzzle-scene__status {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #d1d5db;
+}
+
+.puzzle-scene__back {
+  margin-top: 0.75rem;
+}
+
+.geo-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  user-select: none;
+}
+
+.geo-grid__row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.geo-tile {
+  width: 56px;
+  height: 56px;
+  border: 2px solid #4b5563;
+  background: #111827;
+  color: #9ca3af;
+  font-family: ui-monospace, monospace;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0;
+  image-rendering: pixelated;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.geo-tile:hover {
+  border-color: #fbbf24;
+}
+
+.geo-tile--source {
+  border-color: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.45);
+}
+
+.geo-tile--endpoint {
+  border-color: #f97316;
+}
+
+.geo-tile--flow:not(.geo-tile--river-pack) {
+  background: #1d4ed8;
+  color: #e0f2fe;
+}
+
+.geo-tile--river-pack.geo-tile--flow .geo-tile__inner--river-pack {
+  filter: brightness(1.12) saturate(1.2);
+  box-shadow: inset 0 0 14px rgba(56, 189, 248, 0.55);
+}
+
+.geo-tile--glow.geo-tile--flow {
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.7);
+}
+
+.geo-tile__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes geoFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.geography-exit-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.geography-game-inner {
+  min-height: 4rem;
+}
+
+.library-world-root {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.library-world-hud {
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.library-world-hud p {
+  margin: 0;
+}
+
+.library-world-canvas {
+  display: block;
+  margin: 0 auto;
+}
+
+.library-world-dialogue {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  color: #e5e7eb;
+}
+
+.library-world-dialogue__text {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.library-world-dialogue__next {
+  margin-top: 0.25rem;
+}
+
+.touch-controls {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0.65rem;
+  z-index: 45;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 0.8rem;
+  pointer-events: none;
+}
+
+.touch-controls__left,
+.touch-controls__right {
+  pointer-events: auto;
+}
+
+.touch-joystick {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: rgba(2, 6, 23, 0.6);
+  position: relative;
+  touch-action: none;
+}
+
+.touch-joystick__knob {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.9);
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  position: absolute;
+  top: calc(50% - 28px);
+  left: calc(50% - 28px);
+}
+
+.touch-controls__right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.touch-btn {
+  width: 78px;
+  height: 48px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: rgba(15, 23, 42, 0.82);
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.touch-btn--interact {
+  background: rgba(251, 191, 36, 0.92);
+  color: #111827;
+}
+
+.game-pause-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 48;
+  background: rgba(2, 6, 23, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/* [hidden] alone is overridden by `display: flex` above (same specificity). */
+.game-pause-overlay[hidden] {
+  display: none !important;
+  pointer-events: none;
+}
+
+.game-pause-card {
+  width: min(92vw, 340px);
+  background: linear-gradient(180deg, #111827, #0f172a);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.game-pause-card h2,
+.game-pause-card p {
+  margin: 0;
+}
+
+/* —— Portion 1 placement puzzle —— */
+.puzzle-scene--portion1 {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.portion1-intro {
+  font-size: 0.88rem;
+  color: #9ca3af;
+  margin: 0 0 0.75rem;
+}
+
+.portion1-grid-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.portion1-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.geo-portion-cell {
+  width: 56px;
+  height: 56px;
+  border: 2px solid #374151;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.geo-portion-cell--sand {
+  background-image: url("../src/assets/packs/geo-river/tiles/blank.png");
+  background-size: cover;
+  background-position: center;
+  border-color: #6b5344;
+}
+
+.geo-portion-cell--rock {
+  border-color: #1f2937;
+  background-image: url("../src/assets/packs/geo-river/tiles/rock.png");
+  background-size: cover;
+  background-position: center;
+}
+
+/* Portion 1: flowchart arrows only — flat cells, no bitmap tiles */
+.puzzle-scene--portion1 .geo-portion-cell--sand {
+  background: #1f2937;
+  background-image: none;
+  border-color: #4b5563;
+}
+
+.puzzle-scene--portion1 .geo-portion-cell--rock {
+  background: #0f172a;
+  background-image: none;
+  border-color: #1e293b;
+}
+
+.puzzle-scene--portion1 .geo-portion-cell--start,
+.puzzle-scene--portion1 .geo-portion-cell--end {
+  background: #111827;
+  background-image: none;
+}
+
+.portion1-arrow-tile {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.portion1-arrow-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  color: #38bdf8;
+}
+
+.puzzle-scene--portion2 {
+  max-width: 760px;
+}
+
+.puzzle-scene--portion2 .geo-portion-cell--sand {
+  background: #111827;
+  border-color: #475569;
+}
+
+.puzzle-scene--portion2 .geo-portion-cell--rock {
+  background: #0b1220;
+  border-color: #1e293b;
+}
+
+.puzzle-scene--portion2 .geo-portion-cell--sand-teleport {
+  background: rgba(14, 116, 144, 0.25);
+  border-color: #0ea5e9;
+}
+
+.portion2-arrow-tile {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.portion2-arrow-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  color: #67e8f9;
+}
+
+.geo-portion-cell--fixed {
+  border-width: 2px;
+}
+
+.geo-portion-cell--cursor {
+  outline: 2px solid #fbbf24;
+  outline-offset: 1px;
+  z-index: 1;
+}
+
+.geo-portion-cell--flow {
+  box-shadow: inset 0 0 14px rgba(56, 189, 248, 0.55);
+  filter: brightness(1.08);
+}
+
+.portion1-rack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.portion1-rack-slot {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 2px solid #4b5563;
+  border-radius: 4px;
+  background: #111827;
+  cursor: pointer;
+}
+
+.portion1-rack-slot--selected {
+  border-color: #fbbf24;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.35);
+}
+
+.portion1-rack-slot--used {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.portion1-rack-label {
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  font-size: 0.65rem;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.portion1-controls-hint {
+  font-size: 0.72rem;
+  color: #6b7280;
+  margin: 0 0 0.5rem;
+}
+
+.portion1-status {
+  min-height: 1.25rem;
+}
+
+.portion1-completion {
+  margin: 0.65rem 0 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  background: rgba(16, 185, 129, 0.12);
+  color: #a7f3d0;
+  font-size: 0.92rem;
+  text-align: center;
+  animation: portion1-win-in 0.45s ease-out;
+}
+
+.portion1-completion strong {
+  color: #6ee7b7;
+}
+
+.portion1-completion span {
+  opacity: 0.92;
+  font-weight: normal;
+}
+
+@keyframes portion1-win-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.puzzle-scene--solved .geo-portion-cell--flow {
+  box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.8);
+}
+
+/* Manuscript modals */
+.geo-wing-shelves {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.geo-wing-shelves__label {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.geo-wing-shelves__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+}
+
+.geo-manuscript-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  background: rgba(2, 6, 23, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.geo-manuscript-card {
+  max-width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #1e293b, #0f172a);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  color: #e5e7eb;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+}
+
+.geo-manuscript-card__title {
+  margin: 0 0 0.65rem;
+  font-size: 1rem;
+  color: #f1f5f9;
+}
+
+.geo-manuscript-card__body p {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.manuscript-hint {
+  margin-top: 0.5rem;
+}
+
+.manuscript-hint__blue {
+  color: #38bdf8;
+}
+
+@media (orientation: portrait) and (max-width: 1024px) {
+  .pixel-canvas.library-world-canvas,
+  .geo-hub-wrap .pixel-canvas,
+  .geo-wing-wrap .pixel-canvas {
+    max-height: 60vh;
+  }
+}

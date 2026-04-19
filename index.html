@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>The Librarian</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta name="theme-color" content="#1f2933" />
+    <link rel="manifest" href="src/pwa/manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles/geography.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="app-header__title">The Librarian</div>
+      <div class="app-header__meta">
+        <span id="condition-label"></span>
+        <button id="menu-open-btn" type="button" class="btn btn--ghost">Menu</button>
+      </div>
+    </header>
+
+    <div id="menu-root" class="game-menu-root" aria-hidden="true"></div>
+
+    <main id="app-root" class="app-main">
+      <noscript>This application requires JavaScript to run.</noscript>
+    </main>
+
+    <footer class="app-footer">
+      <small>&copy; 2026 The Librarian (Thesis Prototype)</small>
+    </footer>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

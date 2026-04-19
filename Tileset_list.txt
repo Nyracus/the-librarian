@@ -1,0 +1,107 @@
+🧍 1. CHARACTER SPRITES (ESSENTIAL)
+Player (MAIN)
+4-direction walk (up/down/left/right)
+idle (bobbing)
+interact pose (optional)
+
+👉 Frames:
+
+Idle: 1–2
+Walk: 2–4 per direction
+NPCs (minimal set)
+
+You don’t need many:
+
+Archivist (main guide)
+Optional: 1–2 variants (shadow figures / echoes)
+
+👉 Can reuse same base sprite with palette swaps
+
+🧱 2. TILESETS (MOST IMPORTANT)
+A. BASE ARCHITECTURE TILESET (REUSABLE)
+
+Used everywhere.
+
+stone floor
+walls (top-down edges)
+corners
+door frames
+pillars
+
+👉 This is your core grid system
+
+B. LIBRARY TILESET
+bookshelves (horizontal + vertical)
+broken shelves
+stacked manuscripts
+scroll piles
+tables / lecterns
+C. DAMAGED / RUIN VARIANT
+cracked floor
+burned marks
+collapsed walls
+debris tiles
+
+👉 reuse base tiles + overlays
+
+D. SPECIAL WINGS (modular add-ons)
+History Wing
+archive shelves
+sealed rooms
+burned sections
+Geography Wing
+stone channels
+carved maps
+water paths
+floor vents
+Future Wings (plan ahead)
+logic → symbols, patterns
+language → glyph walls
+🧩 3. PUZZLE TILESETS (SEPARATE SYSTEM)
+A. RIVER TILESET (you already started)
+start
+end
+straight
+corner
+T
+cross
+broken
+blank
+hidden
+
+👉 MUST be:
+
+same size (64x64)
+rotation-compatible
+B. GRID / BOARD TILESET
+slot background
+highlight tile
+active tile glow
+error state
+🪑 4. PROPS / INTERACTABLES
+
+These give “game feel”.
+
+Core props:
+shelves (interactive)
+doors (locked/unlocked)
+pedestals
+puzzle triggers (vents, switches)
+central tables
+States needed:
+idle
+hover (highlight)
+active
+✨ 5. VFX SPRITES
+
+Keep small but impactful:
+
+glow (for hidden flow)
+water flow animation
+spark / activation
+fade overlay
+🧠 6. UI ELEMENTS (MINIMAL)
+dialogue box
+choice buttons
+progress indicator
+consent modal (already)

@@ -1,0 +1,12 @@
+{
+  "name": "The Librarian",
+  "short_name": "Librarian",
+  "description": "Thesis prototype: narrative vs non-narrative learning in a library-themed PWA.",
+  "start_url": "../index.html",
+  "scope": "../",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#1f2933",
+  "icons": []
+}
+

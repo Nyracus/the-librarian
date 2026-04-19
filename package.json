@@ -1,0 +1,8 @@
+{
+  "name": "librarian-thesis",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "openai-proxy": "node scripts/openai-proxy.mjs"
+  }
+}

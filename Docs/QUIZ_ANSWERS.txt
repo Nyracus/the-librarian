@@ -1,0 +1,61 @@
+Developer answer key — The Librarian (do not ship to participants)
+====================================================================
+
+Source of truth in code: src/content/historyWing1.js, src/puzzle/geographyWing01.js
+
+
+GEOGRAPHY — River reconstruction (geography_wing_01, non-narrative)
+---------------------------------------------------------------------
+Win condition: player grid must exactly match SOLUTION_GRID (rotations in degrees).
+
+Source cell: row 0 col 0 (cyan). Endpoints: row 0 col 4, row 4 col 4 (orange).
+
+Kinds per cell (row 0 = top):
+  R0: corner, straight, cross, straight, straight
+  R1: blank, blank, straight, blank, blank
+  R2: blank, blank, straight, blank, blank
+  R3: blank, blank, straight, blank, blank
+  R4: blank, blank, corner, straight, straight
+
+Target rotation (degrees) per cell [r][c]:
+  [ [0, 90, 0, 90, 90],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 90, 90] ]
+
+Narrative mode uses the same scrambled layout but win = water reaches both endpoints
+(connectivity), not necessarily this exact rotation pattern.
+
+
+HISTORY WING 1 — Snippet comprehension (same answers both conditions)
+-----------------------------------------------------------------------
+history_01_snippet_01_check: correct option a — Food/resource shortages after failed harvests
+history_01_snippet_02_check: correct option b — Renewed alliances between neighboring states
+history_01_snippet_03_check: correct option a — Trigger incident within existing instability
+
+
+HISTORY WING 1 — Ordering puzzle (narrative & non-narrative; same order)
+-------------------------------------------------------------------------
+Correct order of item ids:
+  p1_item_01 → p1_item_02 → p1_item_03 → p1_item_04
+
+
+HISTORY WING 1 — Pretest
+-------------------------
+history_01_pre_01: correct option a — A shared shortage of important resources
+history_01_pre_02: correct option b — They can require more groups to become involved
+
+
+HISTORY WING 1 — Immediate posttest
+--------------------------------------
+history_01_post_01: correct option b — Trigger within an already unstable system
+history_01_post_02: correct order o1, o2, o3, o4 — Scarcity → Alliance linkage → Trigger incident → Escalation
+history_01_post_03: correct option b — A diplomatic attack during a tense negotiation
+
+
+HISTORY WING 1 — Delayed test
+------------------------------
+history_01_delayed_01: correct option b — Pressure, connection, and a trigger combine
+history_01_delayed_02: correct order d1, d2, d3, d4 — Tension under shortage → Defense commitments → Violent border incident → Wider conflict
+history_01_delayed_03: correct option a — Shortages and alliances create instability before the attack

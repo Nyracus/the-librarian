@@ -1,0 +1,17 @@
+# Firebase CLI
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Secrets (never commit)
+**/serviceAccount*.json
+**/*-firebase-adminsdk-*.json
+.env
+.env.*
+
+# npm (optional OpenAI proxy)
+node_modules/
+
+# OS / editor
+Thumbs.db
+.DS_Store
