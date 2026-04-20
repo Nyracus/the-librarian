@@ -170,12 +170,6 @@ export function renderArchitectQuizStudioScreen(container, context, { screenId }
       createElement("button", {
         attrs: { type: "button" },
         className: "btn btn--ghost",
-        text: "Session from saved questions",
-        onClick: () => navigateTo("architect-quiz-bank-pick", { container })
-      }),
-      createElement("button", {
-        attrs: { type: "button" },
-        className: "btn btn--ghost",
         text: "Architect home",
         onClick: () => navigateTo("architect-home", { container })
       })

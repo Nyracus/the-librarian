@@ -15,6 +15,8 @@ import {
   effectiveWorkflowStatus,
   workflowStatusLabel
 } from "../core/fabricatorWorkflowStore.js";
+import { updateFabricatorWorkflow } from "../api/architectQuizzesApi.js";
+import { isLikelyMissingPhpApiError } from "../api/http.js";
 
 export function renderFabricatorRequestDetailScreen(container, context, { screenId }) {
   updateState({ currentScreenId: screenId, phase: "learning" });
@@ -31,7 +33,13 @@ export function renderFabricatorRequestDetailScreen(container, context, { screen
   container.innerHTML = "";
   const screenEl = createElement("section", { className: "screen fabricator-detail-screen" });
 
-  const req = requestId ? listArchitectRequests().find((r) => r.id === requestId) : null;
+  const req = requestId
+    ? listArchitectRequests().find((r) => r.id === requestId) ||
+      (state.fabricatorActiveRequestPayload &&
+      state.fabricatorActiveRequestPayload.id === requestId
+        ? state.fabricatorActiveRequestPayload
+        : null)
+    : null;
 
   if (!req || !requestId) {
     screenEl.appendChild(
@@ -46,7 +54,7 @@ export function renderFabricatorRequestDetailScreen(container, context, { screen
         className: "btn btn--primary",
         text: "Fabricator queue",
         onClick: () => {
-          updateState({ fabricatorActiveRequestId: null });
+          updateState({ fabricatorActiveRequestId: null, fabricatorActiveRequestPayload: null });
           navigateTo("fabricator-queue", { container });
         }
       })
@@ -155,7 +163,21 @@ export function renderFabricatorRequestDetailScreen(container, context, { screen
       fabricatorNotes: fabNotes.value.trim(),
       handoffSummary: handoff.value.trim()
     });
-    saveStatus.textContent = "Draft saved.";
+    void updateFabricatorWorkflow({
+      requestId,
+      action: "save",
+      fabricatorNotes: fabNotes.value.trim(),
+      handoffSummary: handoff.value.trim(),
+      fabricatorWingId: getWorkflowByRequestId(requestId)?.fabricatorWingId || null
+    })
+      .then(() => {
+        saveStatus.textContent = "Draft saved.";
+      })
+      .catch((err) => {
+        saveStatus.textContent = isLikelyMissingPhpApiError(err)
+          ? "Draft saved locally, but API is unavailable."
+          : err?.message || "Draft sync failed.";
+      });
   }
 
   function syncFieldsReadonly(st) {
@@ -182,13 +204,35 @@ export function renderFabricatorRequestDetailScreen(container, context, { screen
       );
     }
 
+    if (st === "in_progress" || st === "revision_requested") {
+      actionRow.appendChild(
+        createElement("button", {
+          attrs: { type: "button" },
+          className: "btn btn--ghost",
+          text: "Build narrative wing (tileset)",
+          onClick: () => {
+            updateState({ fabricatorWingBuilderRequestId: requestId });
+            navigateTo("fabricator-wing-builder", { container });
+          }
+        })
+      );
+    }
+
     if (st === "queued") {
       actionRow.appendChild(
         createElement("button", {
           attrs: { type: "button" },
           className: "btn btn--primary",
           text: "Claim this request",
-          onClick: () => {
+          onClick: async () => {
+            try {
+              await updateFabricatorWorkflow({ requestId, action: "claim" });
+            } catch (err) {
+              saveStatus.textContent = isLikelyMissingPhpApiError(err)
+                ? "Could not claim via API."
+                : err?.message || "Claim failed.";
+              return;
+            }
             claimRequest(requestId);
             logEvent({
               participantId: state.participantId,
@@ -214,18 +258,28 @@ export function renderFabricatorRequestDetailScreen(container, context, { screen
           attrs: { type: "button" },
           className: "btn btn--primary",
           text: "Submit for architect review",
-          onClick: () => {
+          onClick: async () => {
             saveDraft();
             const w = getWorkflowByRequestId(requestId);
             if (!w?.handoffSummary?.trim()) {
               saveStatus.textContent = "Add a short handoff summary before submitting.";
               return;
             }
-            const result = submitForReview(requestId);
-            if (!result || result.status !== "submitted_for_review") {
-              saveStatus.textContent = "Cannot submit from this status.";
+            try {
+              await updateFabricatorWorkflow({
+                requestId,
+                action: "submit",
+                fabricatorNotes: fabNotes.value.trim(),
+                handoffSummary: handoff.value.trim(),
+                fabricatorWingId: w.fabricatorWingId || null
+              });
+            } catch (err) {
+              saveStatus.textContent = isLikelyMissingPhpApiError(err)
+                ? "Could not submit via API."
+                : err?.message || "Submit failed.";
               return;
             }
+            const result = submitForReview(requestId);
             logEvent({
               participantId: state.participantId,
               condition: state.condition,
@@ -269,7 +323,15 @@ export function renderFabricatorRequestDetailScreen(container, context, { screen
           attrs: { type: "button" },
           className: "btn btn--ghost",
           text: "Reopen as in progress",
-          onClick: () => {
+          onClick: async () => {
+            try {
+              await updateFabricatorWorkflow({ requestId, action: "reopen" });
+            } catch (err) {
+              saveStatus.textContent = isLikelyMissingPhpApiError(err)
+                ? "Could not reopen via API."
+                : err?.message || "Reopen failed.";
+              return;
+            }
             reopenAfterRejection(requestId);
             refreshStatusLine();
             syncArchitectFeedback();
@@ -285,7 +347,7 @@ export function renderFabricatorRequestDetailScreen(container, context, { screen
         className: "btn btn--ghost",
         text: "Back to queue",
         onClick: () => {
-          updateState({ fabricatorActiveRequestId: null });
+          updateState({ fabricatorActiveRequestId: null, fabricatorActiveRequestPayload: null });
           navigateTo("fabricator-queue", { container });
         }
       })

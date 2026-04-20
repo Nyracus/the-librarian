@@ -65,19 +65,6 @@ export const FEATURE_MAP_PILLARS = [
       },
       { label: "Content is authored in-repo for this prototype", status: "partial" }
     ]
-  },
-  {
-    id: "ai",
-    title: "AI integration (planned product)",
-    blurb: "OpenAI-style helpers for content and feedback.",
-    items: [
-      {
-        label: "AI Lab: MCQ generation → question bank, explanations, coaching feedback, Fabricator brainstorm (OpenAI via local proxy)",
-        status: "partial"
-      },
-      { label: "Smart hints during live items (inline)", status: "planned" },
-      { label: "Auto-tagging and difficulty estimation (batch)", status: "planned" }
-    ]
   }
 ];
 

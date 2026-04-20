@@ -1,4 +1,4 @@
-// src/core/questionBankStore.js — Architect question bank (local CMS): CRUD + import/export.
+// src/core/questionBankStore.js — Architect saved quizzes (local CMS + optional serverQuizId): CRUD + import/export.
 // Persists in localStorage; items match AssessmentItem shapes (MCQ, fill blank, dropdown, ordering).
 
 import { BLANK_PLACEHOLDER } from "./quizBuilderConstants.js";
@@ -30,7 +30,9 @@ const STORAGE_KEY = "librarian_question_bank_v1";
  *   status: BankStatus;
  *   notes: string;
  *   item: BankAssessmentItem;
+ *   serverQuizId?: string | null;
  * }} BankQuestion
+ * (serverQuizId matches architect_quizzes.id after Save syncs a single-item quiz.)
  */
 
 function loadRaw() {
@@ -99,6 +101,10 @@ export function createQuestionBankEntry(data) {
     id,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    serverQuizId:
+      data.serverQuizId !== undefined && data.serverQuizId !== null
+        ? String(data.serverQuizId)
+        : null,
     item: data.item ? { ...data.item, id: `${id}_item` } : data.item
   };
   const v = validateBankQuestion(entry);
@@ -127,6 +133,12 @@ export function updateQuestionBankEntry(id, patch) {
     updatedAt: new Date().toISOString(),
     item: mergedItem
   };
+  if (patch.serverQuizId !== undefined) {
+    entry.serverQuizId =
+      patch.serverQuizId === null || patch.serverQuizId === ""
+        ? null
+        : String(patch.serverQuizId);
+  }
   const v = validateBankQuestion(entry);
   if (!v.ok) return v;
   const next = loadRaw().map((q) => (q.id === id ? entry : q));
@@ -189,6 +201,10 @@ export function importQuestionBankJson(jsonText, opts = {}) {
       tags: normalizeTags(row.tags),
       status: row.status === "draft" ? "draft" : "published",
       notes: String(row.notes || "").trim(),
+      serverQuizId:
+        row.serverQuizId !== undefined && row.serverQuizId !== null && String(row.serverQuizId).trim()
+          ? String(row.serverQuizId).trim()
+          : null,
       item: row.item ? { ...row.item, id: `${id}_item` } : row.item
     };
     const v = validateBankQuestion(entry);

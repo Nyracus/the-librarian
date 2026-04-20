@@ -43,6 +43,14 @@ export function renderFabricatorHomeScreen(container, context, { screenId }) {
   screenEl.appendChild(
     createElement("button", {
       className: "btn btn--ghost",
+      text: "Tileset narrative wing (from open request)",
+      onClick: () => navigateTo("fabricator-wing-builder", { container })
+    })
+  );
+
+  screenEl.appendChild(
+    createElement("button", {
+      className: "btn btn--ghost",
       text: "Manage users (admin)",
       onClick: () => navigateTo("fabricator-users", { container })
     })

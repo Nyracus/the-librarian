@@ -82,3 +82,114 @@ CREATE TABLE user_aux_data (
   updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   CONSTRAINT fk_aux_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- Architect-authored quizzes (saved for assignment to librarians).
+CREATE TABLE architect_quizzes (
+  id VARCHAR(64) NOT NULL,
+  architect_user_id BIGINT UNSIGNED NOT NULL,
+  title VARCHAR(512) NOT NULL,
+  template_id VARCHAR(64) NOT NULL DEFAULT 'custom',
+  items_json JSON NOT NULL,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (architect_user_id, id),
+  KEY idx_aq_updated (architect_user_id, updated_at),
+  CONSTRAINT fk_aq_architect FOREIGN KEY (architect_user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Which librarians receive which quiz (by architect).
+CREATE TABLE quiz_assignments (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  quiz_id VARCHAR(64) NOT NULL,
+  architect_user_id BIGINT UNSIGNED NOT NULL,
+  librarian_user_id BIGINT UNSIGNED NOT NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uq_quiz_lib (quiz_id, architect_user_id, librarian_user_id),
+  KEY idx_qa_lib (librarian_user_id),
+  CONSTRAINT fk_qa_quiz FOREIGN KEY (architect_user_id, quiz_id)
+    REFERENCES architect_quizzes (architect_user_id, id) ON DELETE CASCADE,
+  CONSTRAINT fk_qa_librarian FOREIGN KEY (librarian_user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Architect requests assigned to Fabricators.
+CREATE TABLE architect_requests (
+  id VARCHAR(64) NOT NULL,
+  architect_user_id BIGINT UNSIGNED NOT NULL,
+  title VARCHAR(512) NOT NULL,
+  wing VARCHAR(64) NOT NULL DEFAULT 'general',
+  difficulty VARCHAR(32) NOT NULL DEFAULT 'mixed',
+  framing VARCHAR(32) NOT NULL DEFAULT 'either',
+  tags TEXT NULL,
+  notes TEXT NULL,
+  requester_hint VARCHAR(512) NULL,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (architect_user_id, id),
+  KEY idx_ar_updated (architect_user_id, updated_at),
+  CONSTRAINT fk_ar_architect FOREIGN KEY (architect_user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE fabricator_request_assignments (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  request_id VARCHAR(64) NOT NULL,
+  architect_user_id BIGINT UNSIGNED NOT NULL,
+  fabricator_user_id BIGINT UNSIGNED NOT NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uq_req_fab (request_id, architect_user_id, fabricator_user_id),
+  KEY idx_fra_fabricator (fabricator_user_id),
+  CONSTRAINT fk_fra_request FOREIGN KEY (architect_user_id, request_id)
+    REFERENCES architect_requests (architect_user_id, id) ON DELETE CASCADE,
+  CONSTRAINT fk_fra_fabricator FOREIGN KEY (fabricator_user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE fabricator_request_workflows (
+  request_id VARCHAR(64) NOT NULL,
+  architect_user_id BIGINT UNSIGNED NOT NULL,
+  fabricator_user_id BIGINT UNSIGNED NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'queued',
+  fabricator_notes TEXT NULL,
+  handoff_summary TEXT NULL,
+  fabricator_wing_id VARCHAR(64) NULL,
+  architect_notes TEXT NULL,
+  claimed_at DATETIME(3) NULL,
+  submitted_for_review_at DATETIME(3) NULL,
+  last_decision_at DATETIME(3) NULL,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (architect_user_id, request_id),
+  KEY idx_frw_status (architect_user_id, status, updated_at),
+  KEY idx_frw_fabricator (fabricator_user_id, updated_at),
+  CONSTRAINT fk_frw_request FOREIGN KEY (architect_user_id, request_id)
+    REFERENCES architect_requests (architect_user_id, id) ON DELETE CASCADE,
+  CONSTRAINT fk_frw_fabricator FOREIGN KEY (fabricator_user_id) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE fabricator_wings (
+  id VARCHAR(64) NOT NULL,
+  architect_user_id BIGINT UNSIGNED NOT NULL,
+  request_id VARCHAR(64) NOT NULL,
+  fabricator_user_id BIGINT UNSIGNED NULL,
+  wing_name VARCHAR(512) NOT NULL,
+  shelves_json JSON NOT NULL,
+  platforms_json JSON NOT NULL,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (architect_user_id, id),
+  KEY idx_fw_request (architect_user_id, request_id),
+  CONSTRAINT fk_fw_request FOREIGN KEY (architect_user_id, request_id)
+    REFERENCES architect_requests (architect_user_id, id) ON DELETE CASCADE,
+  CONSTRAINT fk_fw_fabricator FOREIGN KEY (fabricator_user_id) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE fabricator_wing_assignments (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  wing_id VARCHAR(64) NOT NULL,
+  architect_user_id BIGINT UNSIGNED NOT NULL,
+  librarian_user_id BIGINT UNSIGNED NOT NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uq_fwa (wing_id, architect_user_id, librarian_user_id),
+  KEY idx_fwa_librarian (librarian_user_id),
+  CONSTRAINT fk_fwa_wing FOREIGN KEY (architect_user_id, wing_id)
+    REFERENCES fabricator_wings (architect_user_id, id) ON DELETE CASCADE,
+  CONSTRAINT fk_fwa_librarian FOREIGN KEY (librarian_user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB;

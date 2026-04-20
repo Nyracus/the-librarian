@@ -1,7 +1,13 @@
 // src/screens/GameWorldScreen.js — walkable library hub + History wing room (Stardew-style loop)
 
 import { getState, updateState } from "../core/state.js";
-import { logScreenEntry } from "../core/logger.js";
+import { logScreenEntry, logEvent } from "../core/logger.js";
+import { getFabricatorWing } from "../core/fabricatorWingStore.js";
+import {
+  listWingIdsForLibrarianEmail,
+  refreshAssignedWingsFromApi
+} from "../core/fabricatorWingAssignmentStore.js";
+import { confidenceFromResponseTimeMs } from "../core/confidenceFromTiming.js";
 import { startGameLoop } from "../engine/gameLoop.js";
 import {
   getMovementVector,
@@ -86,9 +92,17 @@ export function renderGameWorldScreen(container, context, { screenId }) {
   dialogueEl.appendChild(dialogueText);
   dialogueEl.appendChild(dialogueNext);
 
+  const mcqOverlay = document.createElement("div");
+  mcqOverlay.className = "library-world-mcq";
+  mcqOverlay.hidden = true;
+  const mcqHost = document.createElement("div");
+  mcqHost.className = "library-world-mcq__inner";
+  mcqOverlay.appendChild(mcqHost);
+
   root.appendChild(hud);
   root.appendChild(canvas);
   root.appendChild(dialogueEl);
+  root.appendChild(mcqOverlay);
   container.appendChild(root);
 
   let paused = false;
@@ -150,8 +164,22 @@ export function renderGameWorldScreen(container, context, { screenId }) {
 
   const ctx = canvas.getContext("2d");
 
-  let room = state.world?.room === "history" ? "history" : "hub";
-  updateState({ world: { room } });
+  let room =
+    state.world?.room === "history"
+      ? "history"
+      : state.world?.room === "fabricator_wing" && state.world?.fabricatorWingActiveId
+        ? "fabricator_wing"
+        : "hub";
+  if (state.world?.room === "fabricator_wing" && !state.world?.fabricatorWingActiveId) {
+    room = "hub";
+  }
+  updateState({
+    world: {
+      ...getState().world,
+      room,
+      fabricatorWingActiveId: room === "fabricator_wing" ? state.world?.fabricatorWingActiveId : null
+    }
+  });
 
   const player = new Player(W / 2, H - 72);
 
@@ -165,6 +193,168 @@ export function renderGameWorldScreen(container, context, { screenId }) {
     }
   }
   placePlayerForRoom(room);
+
+  let fabricatorHubDoors = [];
+  let fabRoomCacheKey = "";
+  /** @type {InteractiveObject[]} */
+  let fabShelfObjs = [];
+  /** @type {InteractiveObject[]} */
+  let fabPlatObjs = [];
+  let mcqOpen = false;
+  let mcqStartedAt = 0;
+
+  function rebuildFabricatorHubDoors() {
+    fabricatorHubDoors = [];
+    const email = getState().auth?.email;
+    const ids = listWingIdsForLibrarianEmail(email);
+    ids.forEach((wid, i) => {
+      const wing = getFabricatorWing(wid);
+      if (!wing) return;
+      const x = 120 + i * 88;
+      const y = 328;
+      const door = new InteractiveObject({
+        x,
+        y,
+        w: 64,
+        h: 52,
+        label: `wing-door-${wid}`,
+        onInteract: () => {
+          updateState({
+            world: {
+              ...getState().world,
+              room: "fabricator_wing",
+              fabricatorWingActiveId: wid
+            }
+          });
+          room = "fabricator_wing";
+          fabRoomCacheKey = "";
+          placePlayerForRoom("fabricator_wing");
+          playUiSfx("click");
+        }
+      });
+      door.wingTitle = wing.wingName;
+      fabricatorHubDoors.push(door);
+    });
+  }
+
+  function ensureFabRoomObjects() {
+    const id = getState().world?.fabricatorWingActiveId;
+    if (room !== "fabricator_wing" || !id) {
+      fabShelfObjs = [];
+      fabPlatObjs = [];
+      fabRoomCacheKey = "";
+      return;
+    }
+    if (fabRoomCacheKey === id) return;
+    const wing = getFabricatorWing(id);
+    if (!wing) return;
+    fabRoomCacheKey = id;
+    fabShelfObjs = wing.shelves.map((s) => {
+      return new InteractiveObject({
+        x: s.x,
+        y: s.y,
+        w: s.w,
+        h: s.h,
+        label: s.label,
+        onInteract: () => {
+          showDialogue([s.text || "—"]);
+        }
+      });
+    });
+    fabPlatObjs = wing.platforms.map((p) => {
+      return new InteractiveObject({
+        x: p.x,
+        y: p.y,
+        w: p.w,
+        h: p.h,
+        label: p.label,
+        onInteract: () => {
+          openPlatformMcq(p.item, wing.id, p.label);
+        }
+      });
+    });
+  }
+
+  function openPlatformMcq(item, wingId, platformLabel) {
+    if (!item || item.type !== "multiple_choice") return;
+    mcqOpen = true;
+    mcqStartedAt = performance.now();
+    mcqOverlay.hidden = false;
+    mcqHost.innerHTML = "";
+    const st = getState();
+    const title = document.createElement("p");
+    title.className = "library-world-mcq__prompt";
+    title.textContent = item.prompt || "";
+    mcqHost.appendChild(title);
+    const form = document.createElement("form");
+    form.className = "library-world-mcq__form";
+    (item.options || []).forEach((opt) => {
+      const lab = document.createElement("label");
+      lab.className = "library-world-mcq__opt";
+      const rad = document.createElement("input");
+      rad.type = "radio";
+      rad.name = "mcq";
+      rad.value = opt.id;
+      lab.appendChild(rad);
+      lab.appendChild(document.createTextNode(` ${opt.text}`));
+      form.appendChild(lab);
+    });
+    const row = document.createElement("div");
+    row.className = "library-world-mcq__actions";
+    const submit = document.createElement("button");
+    submit.type = "submit";
+    submit.className = "btn btn--primary";
+    submit.textContent = "Submit answer";
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "btn btn--ghost";
+    cancel.textContent = "Close";
+    cancel.addEventListener("click", () => {
+      mcqOpen = false;
+      mcqOverlay.hidden = true;
+      mcqHost.innerHTML = "";
+    });
+    row.appendChild(submit);
+    row.appendChild(cancel);
+    form.appendChild(row);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const sel = form.querySelector('input[name="mcq"]:checked');
+      const responseTimeMs = Math.round(performance.now() - mcqStartedAt);
+      const confidence = confidenceFromResponseTimeMs(responseTimeMs);
+      const correctness = Boolean(sel && sel.value === item.correctOptionId);
+      logEvent({
+        participantId: st.participantId,
+        condition: st.condition,
+        phase: st.phase,
+        screenId,
+        itemId: `${wingId}:${platformLabel}`,
+        response: {
+          type: "assessment-submit",
+          format: "multiple_choice",
+          source: "fabricator_wing_platform",
+          wingId,
+          selectedOptionId: sel ? sel.value : "",
+          confidence,
+          confidenceFrom: "response_latency_ms"
+        },
+        correctness,
+        responseTimeMs
+      });
+      mcqOpen = false;
+      mcqOverlay.hidden = true;
+      mcqHost.innerHTML = "";
+      playUiSfx(correctness ? "success" : "error");
+    });
+    mcqHost.appendChild(form);
+  }
+
+  rebuildFabricatorHubDoors();
+  void refreshAssignedWingsFromApi()
+    .then(() => {
+      rebuildFabricatorHubDoors();
+    })
+    .catch(() => {});
 
   let dialogue = null;
   let dialogueCooldown = 0;
@@ -209,7 +399,9 @@ export function renderGameWorldScreen(container, context, { screenId }) {
     label: "history-door",
     onInteract: () => {
       room = "history";
-      updateState({ world: { room: "history" } });
+      updateState({
+        world: { ...getState().world, room: "history", fabricatorWingActiveId: null }
+      });
       placePlayerForRoom("history");
       playUiSfx("click");
     }
@@ -247,8 +439,25 @@ export function renderGameWorldScreen(container, context, { screenId }) {
     label: "back",
     onInteract: () => {
       room = "hub";
-      updateState({ world: { room: "hub" } });
+      updateState({ world: { ...getState().world, room: "hub", fabricatorWingActiveId: null } });
       placePlayerForRoom("hub");
+      rebuildFabricatorHubDoors();
+      playUiSfx("click");
+    }
+  });
+
+  const backFabWing = new InteractiveObject({
+    x: W / 2,
+    y: H - 36,
+    w: 120,
+    h: 48,
+    label: "back-fabricator",
+    onInteract: () => {
+      room = "hub";
+      updateState({ world: { ...getState().world, room: "hub", fabricatorWingActiveId: null } });
+      fabRoomCacheKey = "";
+      placePlayerForRoom("hub");
+      rebuildFabricatorHubDoors();
       playUiSfx("click");
     }
   });
@@ -321,8 +530,15 @@ export function renderGameWorldScreen(container, context, { screenId }) {
   });
 
   function getObjects() {
-    if (room === "hub") return [historyDoor, geoDoor];
-    return [backToHub, lectern, shelfA, shelfB, shelfC, archivist];
+    if (room === "hub") return [historyDoor, geoDoor, ...fabricatorHubDoors];
+    if (room === "history") {
+      return [backToHub, lectern, shelfA, shelfB, shelfC, archivist];
+    }
+    if (room === "fabricator_wing") {
+      ensureFabRoomObjects();
+      return [backFabWing, ...fabShelfObjs, ...fabPlatObjs];
+    }
+    return [historyDoor, geoDoor];
   }
 
   function drawRoomBackground(r) {
@@ -332,9 +548,35 @@ export function renderGameWorldScreen(container, context, { screenId }) {
       drawTechTiledArea(ctx, TechProp.WALKWAY, 0, H - 52, W, 52, 32);
       drawTechTile(ctx, TechProp.DOOR, historyDoor.x - 34, historyDoor.y - 52, 68, 104);
       drawTechTile(ctx, TechProp.DOOR, geoDoor.x - 34, geoDoor.y - 52, 68, 104);
+      for (const d of fabricatorHubDoors) {
+        drawTechTile(ctx, TechProp.DOOR, d.x - 32, d.y - 40, 64, 80);
+        ctx.fillStyle = "#e5e7eb";
+        ctx.font = "10px system-ui, sans-serif";
+        const label = d.wingTitle ? String(d.wingTitle).slice(0, 22) : "Wing";
+        ctx.fillText(label, d.x - 36, d.y + 36);
+      }
       ctx.fillStyle = "#6b7280";
       ctx.font = "12px system-ui, sans-serif";
-      ctx.fillText("Main hall — doors to wings", 16, 32);
+      ctx.fillText("Main hall — doors to wings (assigned narrative wings appear below)", 16, 32);
+    } else if (r === "fabricator_wing") {
+      const wid = getState().world?.fabricatorWingActiveId;
+      const wing = wid ? getFabricatorWing(wid) : null;
+      drawTechTiledArea(ctx, TechProp.FLOOR, 0, 0, W, H, 32);
+      drawTechTiledArea(ctx, TechProp.WALL, 0, 0, W, 56, 32);
+      drawTechTiledArea(ctx, TechProp.WALKWAY, 0, H - 52, W, 52, 32);
+      if (wing) {
+        for (const s of wing.shelves) {
+          drawTechTile(ctx, TechProp.BOOKSHELF, s.x - s.w / 2, s.y - 24, s.w, 40);
+        }
+        for (const p of wing.platforms) {
+          drawTechTile(ctx, TechProp.TABLE, p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+        }
+        ctx.fillStyle = "#6b7280";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.fillText(wing.wingName, 16, 28);
+        ctx.fillText("Shelves: flavor · Platforms: quiz", 16, 44);
+      }
+      drawTechTile(ctx, TechProp.DOOR, backFabWing.x - 38, backFabWing.y - 28, 76, 56);
     } else {
       drawTechTiledArea(ctx, TechProp.FLOOR, 0, 0, W, H, 32);
       drawTechTiledArea(ctx, TechProp.WALKWAY, 40, 56, W - 80, 72, 32);
@@ -369,6 +611,8 @@ export function renderGameWorldScreen(container, context, { screenId }) {
         }
         return;
       }
+
+      if (mcqOpen) return;
 
       const mv = getMovementVector();
       player.update(dt, mv);

@@ -860,6 +860,22 @@ label {
   text-align: center;
 }
 
+.architect-quiz-hub__saved-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 42rem;
+  margin: 0.25rem 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.architect-quiz-hub__saved-note {
+  margin: 0;
+}
+
 .architect-qbank-card__actions {
   display: flex;
   flex-wrap: wrap;
@@ -1448,4 +1464,150 @@ label {
 .assessment-item__dropdown {
   max-width: 24rem;
   margin-bottom: 0.5rem;
+}
+
+/* Architect quiz preview (read-only) */
+.assessment-preview__options {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.assessment-preview__opt {
+  margin: 0.25rem 0;
+}
+
+.assessment-preview__opt--correct {
+  color: var(--accent, #fbbf24);
+}
+
+.assessment-preview__badge {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.assessment-preview__blank {
+  padding: 0 0.2rem;
+  border-radius: 2px;
+}
+
+.assessment-preview__key {
+  margin-top: 0.5rem;
+}
+
+.templated-quiz-run__nav,
+.templated-quiz-run__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.templated-quiz-run__preview-host {
+  margin-top: 0.5rem;
+}
+
+.librarian-assigned-card {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(15, 23, 42, 0.45);
+  margin-bottom: 0.75rem;
+}
+
+.librarian-assigned-card__title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.architect-quiz-assign__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  max-width: 32rem;
+}
+
+.architect-quiz-assign__librarians {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 14rem;
+  overflow: auto;
+  margin: 0.5rem 0 1rem;
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.architect-quiz-assign__lib-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+/* Library world — fabricator wing MCQ overlay */
+.library-world-root {
+  position: relative;
+}
+
+.library-world-mcq {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+/* Keep MCQ overlay fully off until a platform quiz is opened. */
+.library-world-mcq[hidden] {
+  display: none !important;
+  pointer-events: none;
+}
+
+.library-world-mcq__inner {
+  width: 100%;
+  max-width: 26rem;
+  max-height: min(90vh, 22rem);
+  overflow: auto;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-soft);
+}
+
+.library-world-mcq__prompt {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.library-world-mcq__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.library-world-mcq__opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.library-world-mcq__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }

@@ -4,13 +4,14 @@ import { createElement } from "./ui.js";
 import { logEvent } from "../core/logger.js";
 import { getState, updateState } from "../core/state.js";
 import { BLANK_PLACEHOLDER } from "../core/quizBuilderConstants.js";
+import { confidenceFromResponseTimeMs } from "../core/confidenceFromTiming.js";
 
 /**
  * Renders one assessment item and logs submission.
  * Supports: multiple_choice (radio list), fill_blank, dropdown, ordering
  *
  * Logs:
- * - assessment-submit
+ * - assessment-submit (includes `confidence` from response latency, not self-report)
  */
 export function renderAssessmentItem(container, { item, context, onComplete }) {
   container.innerHTML = "";
@@ -63,23 +64,10 @@ function renderMultipleChoice(container, item, context, onComplete) {
     text: "Submit answer",
     attrs: { type: "submit" }
   });
-  const confidenceSelect = createElement("select", { attrs: { required: "true" } });
-  confidenceSelect.appendChild(
-    createElement("option", {
-      attrs: { value: "", disabled: "true", selected: "true" },
-      text: "Confidence (low / medium / high)"
-    })
-  );
-  ["low", "medium", "high"].forEach((level) => {
-    confidenceSelect.appendChild(
-      createElement("option", { attrs: { value: level }, text: level })
-    );
-  });
 
   const feedbackEl = createElement("div", { className: "screen__feedback text-muted" });
 
   form.appendChild(fieldset);
-  form.appendChild(confidenceSelect);
   form.appendChild(submitBtn);
 
   wrapper.appendChild(form);
@@ -92,14 +80,14 @@ function renderMultipleChoice(container, item, context, onComplete) {
     event.preventDefault();
     const checked = fieldset.querySelector('input[type="radio"]:checked');
     const selectedOptionId = checked ? checked.value : "";
-    const confidence = confidenceSelect.value;
-    if (!selectedOptionId || !confidence) {
+    if (!selectedOptionId) {
       feedbackEl.textContent = "Please choose an option.";
       feedbackEl.className = "screen__feedback text-danger";
       return;
     }
 
     const responseTimeMs = Math.round(performance.now() - startTime);
+    const confidence = confidenceFromResponseTimeMs(responseTimeMs);
     const correctness = selectedOptionId === item.correctOptionId;
 
     logEvent({
@@ -112,7 +100,8 @@ function renderMultipleChoice(container, item, context, onComplete) {
         type: "assessment-submit",
         format: "multiple_choice",
         selectedOptionId,
-        confidence
+        confidence,
+        confidenceFrom: "response_latency_ms"
       },
       correctness,
       responseTimeMs
@@ -157,19 +146,6 @@ function renderFillBlank(container, item, context, onComplete) {
     form.appendChild(inputEl);
   }
 
-  const confidenceSelect = createElement("select", { attrs: { required: "true" } });
-  confidenceSelect.appendChild(
-    createElement("option", {
-      attrs: { value: "", disabled: "true", selected: "true" },
-      text: "Confidence (low / medium / high)"
-    })
-  );
-  ["low", "medium", "high"].forEach((level) => {
-    confidenceSelect.appendChild(
-      createElement("option", { attrs: { value: level }, text: level })
-    );
-  });
-
   const submitBtn = createElement("button", {
     className: "btn btn--primary",
     text: "Submit answer",
@@ -177,7 +153,6 @@ function renderFillBlank(container, item, context, onComplete) {
   });
   const feedbackEl = createElement("div", { className: "screen__feedback text-muted" });
 
-  form.appendChild(confidenceSelect);
   form.appendChild(submitBtn);
   wrapper.appendChild(form);
   wrapper.appendChild(feedbackEl);
@@ -188,14 +163,14 @@ function renderFillBlank(container, item, context, onComplete) {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const raw = (inputEl.value || "").trim();
-    const confidence = confidenceSelect.value;
-    if (!raw || !confidence) {
+    if (!raw) {
       feedbackEl.textContent = "Enter an answer.";
       feedbackEl.className = "screen__feedback text-danger";
       return;
     }
 
     const responseTimeMs = Math.round(performance.now() - startTime);
+    const confidence = confidenceFromResponseTimeMs(responseTimeMs);
     const expected = String(item.correctAnswer || "").trim().toLowerCase();
     const correctness = raw.toLowerCase() === expected;
 
@@ -209,7 +184,8 @@ function renderFillBlank(container, item, context, onComplete) {
         type: "assessment-submit",
         format: "fill_blank",
         textAnswer: raw,
-        confidence
+        confidence,
+        confidenceFrom: "response_latency_ms"
       },
       correctness,
       responseTimeMs
@@ -250,23 +226,10 @@ function renderDropdownQuestion(container, item, context, onComplete) {
     text: "Submit answer",
     attrs: { type: "submit" }
   });
-  const confidenceSelect = createElement("select", { attrs: { required: "true" } });
-  confidenceSelect.appendChild(
-    createElement("option", {
-      attrs: { value: "", disabled: "true", selected: "true" },
-      text: "Confidence (low / medium / high)"
-    })
-  );
-  ["low", "medium", "high"].forEach((level) => {
-    confidenceSelect.appendChild(
-      createElement("option", { attrs: { value: level }, text: level })
-    );
-  });
 
   const feedbackEl = createElement("div", { className: "screen__feedback text-muted" });
 
   form.appendChild(selectEl);
-  form.appendChild(confidenceSelect);
   form.appendChild(submitBtn);
 
   wrapper.appendChild(form);
@@ -278,14 +241,14 @@ function renderDropdownQuestion(container, item, context, onComplete) {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const selectedOptionId = selectEl.value;
-    const confidence = confidenceSelect.value;
-    if (!selectedOptionId || !confidence) {
+    if (!selectedOptionId) {
       feedbackEl.textContent = "Please choose from the dropdown.";
       feedbackEl.className = "screen__feedback text-danger";
       return;
     }
 
     const responseTimeMs = Math.round(performance.now() - startTime);
+    const confidence = confidenceFromResponseTimeMs(responseTimeMs);
     const correctness = selectedOptionId === item.correctOptionId;
 
     logEvent({
@@ -298,7 +261,8 @@ function renderDropdownQuestion(container, item, context, onComplete) {
         type: "assessment-submit",
         format: "dropdown",
         selectedOptionId,
-        confidence
+        confidence,
+        confidenceFrom: "response_latency_ms"
       },
       correctness,
       responseTimeMs
@@ -348,20 +312,7 @@ function renderOrdering(container, item, context, onComplete) {
     text: "Submit order",
     attrs: { type: "submit" }
   });
-  const confidenceSelect = createElement("select", { attrs: { required: "true" } });
-  confidenceSelect.appendChild(
-    createElement("option", {
-      attrs: { value: "", disabled: "true", selected: "true" },
-      text: "Confidence (low / medium / high)"
-    })
-  );
-  ["low", "medium", "high"].forEach((level) => {
-    confidenceSelect.appendChild(
-      createElement("option", { attrs: { value: level }, text: level })
-    );
-  });
 
-  form.appendChild(confidenceSelect);
   form.appendChild(submitBtn);
 
   wrapper.appendChild(form);
@@ -373,14 +324,14 @@ function renderOrdering(container, item, context, onComplete) {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const chosenOrderIds = selects.map((s) => s.value).filter(Boolean);
-    const confidence = confidenceSelect.value;
-    if (chosenOrderIds.length !== item.correctOrder.length || !confidence) {
+    if (chosenOrderIds.length !== item.correctOrder.length) {
       feedbackEl.textContent = "Please select an item for each position.";
       feedbackEl.className = "screen__feedback text-danger";
       return;
     }
 
     const responseTimeMs = Math.round(performance.now() - startTime);
+    const confidence = confidenceFromResponseTimeMs(responseTimeMs);
     const correctness = arraysEqual(chosenOrderIds, item.correctOrder);
 
     logEvent({
@@ -393,7 +344,8 @@ function renderOrdering(container, item, context, onComplete) {
         type: "assessment-submit",
         format: "ordering",
         chosenOrderIds,
-        confidence
+        confidence,
+        confidenceFrom: "response_latency_ms"
       },
       correctness,
       responseTimeMs

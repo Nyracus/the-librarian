@@ -23,7 +23,7 @@ function authScreenCopy(screenId) {
       badge: "Architect • Sign in",
       title: "Sign in as Architect",
       subtitleSignedOut:
-        "Quizzes, fabricator requests, approvals, and AI Lab — workspace only."
+        "Quizzes, fabricator requests, and approvals — workspace only."
     };
   }
   if (screenId === "auth-fabricator") {

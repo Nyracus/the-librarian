@@ -38,12 +38,15 @@ import { renderArchitectQuizBuildScreen } from "../screens/ArchitectQuizBuildScr
 import { renderTemplatedQuizRunScreen } from "../screens/TemplatedQuizRunScreen.js";
 import { renderArchitectQuizHubScreen } from "../screens/ArchitectQuizHubScreen.js";
 import { renderArchitectQuestionEditScreen } from "../screens/ArchitectQuestionEditScreen.js";
-import { renderArchitectQuizBankPickScreen } from "../screens/ArchitectQuizBankPickScreen.js";
+import { renderArchitectQuizAssignScreen } from "../screens/ArchitectQuizAssignScreen.js";
+import { renderArchitectWingAssignScreen } from "../screens/ArchitectWingAssignScreen.js";
+import { renderLibrarianAssignedQuizzesScreen } from "../screens/LibrarianAssignedQuizzesScreen.js";
+import { renderLibrarianQuizPlayScreen } from "../screens/LibrarianQuizPlayScreen.js";
 import { renderFabricatorQueueScreen } from "../screens/FabricatorQueueScreen.js";
 import { renderFabricatorRequestDetailScreen } from "../screens/FabricatorRequestDetailScreen.js";
+import { renderFabricatorWingBuilderScreen } from "../screens/FabricatorWingBuilderScreen.js";
 import { renderFabricatorUsersScreen } from "../screens/FabricatorUsersScreen.js";
 import { renderArchitectApprovalScreen } from "../screens/ArchitectApprovalScreen.js";
-import { renderOpenAiLabScreen } from "../screens/OpenAiLabScreen.js";
 
 const ROUTES = {
   login: renderRolePickerScreen,
@@ -59,12 +62,15 @@ const ROUTES = {
   "architect-quiz-run": renderTemplatedQuizRunScreen,
   "architect-quiz-hub": renderArchitectQuizHubScreen,
   "architect-question-edit": renderArchitectQuestionEditScreen,
-  "architect-quiz-bank-pick": renderArchitectQuizBankPickScreen,
+  "architect-quiz-assign": renderArchitectQuizAssignScreen,
+  "architect-wing-assign": renderArchitectWingAssignScreen,
+  "librarian-assigned-quizzes": renderLibrarianAssignedQuizzesScreen,
+  "librarian-quiz-play": renderLibrarianQuizPlayScreen,
   "fabricator-queue": renderFabricatorQueueScreen,
   "fabricator-request-detail": renderFabricatorRequestDetailScreen,
+  "fabricator-wing-builder": renderFabricatorWingBuilderScreen,
   "fabricator-users": renderFabricatorUsersScreen,
   "architect-approval": renderArchitectApprovalScreen,
-  "openai-lab": renderOpenAiLabScreen,
   welcome: renderWelcomeScreen,
   auth: renderAuthScreen,
   "device-setup": renderDeviceSetupScreen,

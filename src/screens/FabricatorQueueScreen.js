@@ -5,8 +5,10 @@ import { getState, updateState } from "../core/state.js";
 import { logScreenEntry, logEvent } from "../core/logger.js";
 import { navigateTo } from "../core/router.js";
 import { listArchitectRequests } from "../core/architectRequestsStore.js";
+import { listAssignedRequestsForFabricator } from "../api/architectQuizzesApi.js";
+import { updateFabricatorWorkflow } from "../api/architectQuizzesApi.js";
+import { isLikelyMissingPhpApiError } from "../api/http.js";
 import {
-  claimRequest,
   effectiveWorkflowStatus,
   workflowStatusLabel,
   exportWorkflowJson,
@@ -37,7 +39,7 @@ export function renderFabricatorQueueScreen(container, context, { screenId }) {
     createElement("p", {
       className: "screen__subtitle",
       text:
-        "Architects submit requests from their screen. You claim work, implement in-repo, document the handoff, then submit for architect approval. All state is stored in this browser."
+        "Architects submit and assign requests from their screen. You claim work, implement in-repo, document the handoff, then submit for architect approval."
     })
   );
 
@@ -107,15 +109,31 @@ export function renderFabricatorQueueScreen(container, context, { screenId }) {
 
   const listHost = createElement("div", { className: "fabricator-queue__list" });
   screenEl.appendChild(listHost);
+  let remoteRows = null;
 
-  function openDetail(requestId) {
-    updateState({ fabricatorActiveRequestId: requestId });
+  function openDetail(request) {
+    updateState({
+      fabricatorActiveRequestId: request.id,
+      fabricatorActiveRequestPayload: request
+    });
     navigateTo("fabricator-request-detail", { container });
   }
 
-  function renderList() {
+  async function renderList() {
     listHost.innerHTML = "";
-    const rows = listArchitectRequests();
+    let rows = Array.isArray(remoteRows) ? remoteRows : [];
+    if (!rows.length) {
+      try {
+        const data = await listAssignedRequestsForFabricator();
+        rows = Array.isArray(data?.requests) ? data.requests : [];
+        remoteRows = rows;
+      } catch (err) {
+        rows = listArchitectRequests();
+        statusEl.textContent = isLikelyMissingPhpApiError(err)
+          ? "Could not load assigned requests from API. Showing local queue."
+          : err?.message || "Could not load API queue. Showing local queue.";
+      }
+    }
     if (!rows.length) {
       listHost.appendChild(
         createElement("p", {
@@ -127,7 +145,7 @@ export function renderFabricatorQueueScreen(container, context, { screenId }) {
     }
 
     rows.forEach((r) => {
-      const st = effectiveWorkflowStatus(r.id);
+      const st = r?.workflow?.status || effectiveWorkflowStatus(r.id);
       const card = createElement("article", { className: "fabricator-queue-card" });
       card.appendChild(
         createElement("h3", { className: "fabricator-queue-card__title", text: r.title })
@@ -135,7 +153,7 @@ export function renderFabricatorQueueScreen(container, context, { screenId }) {
       card.appendChild(
         createElement("p", {
           className: "fabricator-queue-card__meta",
-          text: `${new Date(r.createdAt).toLocaleString()} · ${r.wing} · ${r.framing}`
+          text: `${new Date(r.createdAt || r.assignedAt || r.updatedAt || Date.now()).toLocaleString()} · ${r.wing} · ${r.framing}`
         })
       );
       card.appendChild(
@@ -152,7 +170,7 @@ export function renderFabricatorQueueScreen(container, context, { screenId }) {
           attrs: { type: "button" },
           className: "btn btn--primary",
           text: "Open",
-          onClick: () => openDetail(r.id)
+          onClick: () => openDetail(r)
         })
       );
 
@@ -162,8 +180,15 @@ export function renderFabricatorQueueScreen(container, context, { screenId }) {
             attrs: { type: "button" },
             className: "btn btn--ghost",
             text: "Claim work",
-            onClick: () => {
-              claimRequest(r.id);
+            onClick: async () => {
+              try {
+                await updateFabricatorWorkflow({ requestId: r.id, action: "claim" });
+              } catch (err) {
+                statusEl.textContent = isLikelyMissingPhpApiError(err)
+                  ? "Could not claim (API unavailable)."
+                  : err?.message || "Claim failed.";
+                return;
+              }
               logEvent({
                 participantId: state.participantId,
                 condition: state.condition,
@@ -175,7 +200,8 @@ export function renderFabricatorQueueScreen(container, context, { screenId }) {
                 responseTimeMs: null
               });
               statusEl.textContent = "Claimed — open the request to add notes.";
-              renderList();
+              remoteRows = null;
+              void renderList();
             }
           })
         );
@@ -186,6 +212,6 @@ export function renderFabricatorQueueScreen(container, context, { screenId }) {
     });
   }
 
-  renderList();
+  void renderList();
   container.appendChild(screenEl);
 }

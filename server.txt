@@ -1,3 +1,27 @@
+Local development (PHP + MySQL — required for architect quizzes and librarian assignment)
+
+1) Create the database and tables:
+   mysql -u root -p < sql/schema.sql
+   (If upgrading an old DB, also run sql/migration_architect_quizzes_2026.sql as needed.)
+
+2) Configure api/.env with MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE (default: librarian).
+
+3) Install PHP 8+.
+
+4) Start the app (PHP must execute /api/*.php):
+
+   npm run dev
+
+   Or:  php -S 127.0.0.1:8080 router.php
+
+   Open: http://127.0.0.1:8080
+
+5) Do not use python -m http.server alone for full features — it does not execute PHP.
+
+---
+
+Legacy note (static preview only):
+
 python -m http.server 8080
 
 http://localhost:8080

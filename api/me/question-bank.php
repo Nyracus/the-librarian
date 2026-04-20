@@ -69,7 +69,7 @@ if ($method === 'PUT') {
         $ins = $db->prepare(
             'INSERT INTO question_bank_entries
               (id, user_id, label, wing, difficulty, status, tags_json, notes, item_json, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, CAST(? AS JSON), ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         foreach ($entries as $q) {
@@ -88,7 +88,7 @@ if ($method === 'PUT') {
             $ua = isset($q['updatedAt']) ? date('Y-m-d H:i:s', strtotime((string) $q['updatedAt'])) : gmdate('Y-m-d H:i:s');
 
             $ins->bind_param(
-                'sissssssssss',
+                'sisssssssss',
                 $id,
                 $uid,
                 $label,

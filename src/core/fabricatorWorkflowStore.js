@@ -12,6 +12,7 @@ const STORAGE_KEY = "librarian_fabricator_workflow_v1";
  *   status: WorkflowStatus;
  *   fabricatorNotes: string;
  *   handoffSummary: string;
+ *   fabricatorWingId: string | null;
  *   architectNotes: string;
  *   claimedAt: string | null;
  *   submittedForReviewAt: string | null;
@@ -62,6 +63,7 @@ export function ensureWorkflow(requestId) {
     status: "queued",
     fabricatorNotes: "",
     handoffSummary: "",
+    fabricatorWingId: null,
     architectNotes: "",
     claimedAt: null,
     submittedForReviewAt: null,

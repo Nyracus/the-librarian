@@ -1,4 +1,4 @@
-// src/screens/ArchitectQuizHubScreen.js — one place to build quizzes: wizard, session from saved questions, preview, and CRUD for the four item types.
+// src/screens/ArchitectQuizHubScreen.js — create quiz sets, single-item quizzes, preview, assign, and CRUD.
 
 import { createElement } from "../components/ui.js";
 import { getState, updateState } from "../core/state.js";
@@ -12,6 +12,8 @@ import {
   assessmentItemFromBankQuestion,
   createQuestionBankEntry
 } from "../core/questionBankStore.js";
+import { listArchitectQuizzes } from "../api/architectQuizzesApi.js";
+import { isLikelyMissingPhpApiError } from "../api/http.js";
 
 export function renderArchitectQuizHubScreen(container, context, { screenId }) {
   updateState({ currentScreenId: screenId, phase: "learning" });
@@ -31,13 +33,13 @@ export function renderArchitectQuizHubScreen(container, context, { screenId }) {
     createElement("div", { className: "screen__badge", text: "Architect" })
   );
   screenEl.appendChild(
-    createElement("h1", { className: "screen__title", text: "Create quizzes & questions" })
+    createElement("h1", { className: "screen__title", text: "Create and assign quizzes" })
   );
   screenEl.appendChild(
     createElement("p", {
       className: "screen__subtitle",
       text:
-        "Build multiple-choice, fill-in-the-blank, dropdown, or ordering questions, then use them in a class quiz. Everything is saved on this device unless your school sync is set up."
+        "A quiz can be one item or many. New quiz and Create Quiz Set both save to your account database when you save (PHP + MySQL). Use Assign quiz to librarians for any saved quiz."
     })
   );
 
@@ -52,16 +54,8 @@ export function renderArchitectQuizHubScreen(container, context, { screenId }) {
     createElement("button", {
       attrs: { type: "button" },
       className: "btn btn--primary architect-quiz-hub__quick-btn",
-      text: "Step-by-step quiz (topic and question slots)",
+      text: "Create Quiz Set",
       onClick: () => navigateTo("architect-quiz-studio", { container })
-    })
-  );
-  quick.appendChild(
-    createElement("button", {
-      attrs: { type: "button" },
-      className: "btn btn--ghost architect-quiz-hub__quick-btn",
-      text: "Build a class session from questions you already saved",
-      onClick: () => navigateTo("architect-quiz-bank-pick", { container })
     })
   );
   quick.appendChild(
@@ -72,21 +66,46 @@ export function renderArchitectQuizHubScreen(container, context, { screenId }) {
       onClick: () => navigateTo("architect-quiz-run", { container })
     })
   );
+  quick.appendChild(
+    createElement("button", {
+      attrs: { type: "button" },
+      className: "btn btn--ghost architect-quiz-hub__quick-btn",
+      text: "Assign quiz to librarians",
+      onClick: () => navigateTo("architect-quiz-assign", { container })
+    })
+  );
   screenEl.appendChild(quick);
 
   screenEl.appendChild(
     createElement("h2", {
       className: "architect-quiz-hub__section-title",
-      text: "Your saved questions"
+      text: "Your saved quizzes"
     })
   );
+  const savedBox = createElement("section", { className: "architect-quiz-hub__saved-box" });
+  savedBox.appendChild(
+    createElement("p", {
+      className: "screen__body text-muted architect-quiz-hub__saved-note",
+      text: "Saved to database. Search by title, quiz id, or template."
+    })
+  );
+  const savedSearch = document.createElement("input");
+  savedSearch.type = "search";
+  savedSearch.className = "screen__input";
+  savedSearch.placeholder = "Search saved quizzes…";
+  savedBox.appendChild(savedSearch);
+  const savedStatus = createElement("p", { className: "text-muted", text: "Loading saved quizzes…" });
+  const savedHost = createElement("div", { className: "architect-qbank-list" });
+  savedBox.appendChild(savedStatus);
+  savedBox.appendChild(savedHost);
+  screenEl.appendChild(savedBox);
 
   const toolbar = createElement("div", { className: "architect-qbank-toolbar" });
   toolbar.appendChild(
     createElement("button", {
       attrs: { type: "button" },
       className: "btn btn--primary",
-      text: "New question",
+      text: "New quiz",
       onClick: () => {
         updateState({ architectQuestionEditId: null });
         navigateTo("architect-question-edit", { container });
@@ -181,6 +200,80 @@ export function renderArchitectQuizHubScreen(container, context, { screenId }) {
   );
   screenEl.appendChild(io);
 
+  /** @type {Array<{id:string,title:string,templateId?:string,items?:Array<unknown>,updatedAt?:string,createdAt?:string}>} */
+  let savedRows = [];
+
+  function renderSavedList() {
+    savedHost.innerHTML = "";
+    const q = savedSearch.value.trim().toLowerCase();
+    const rows = savedRows.filter((r) => {
+      if (!q) return true;
+      const blob = `${r.title || ""} ${r.id || ""} ${r.templateId || ""}`.toLowerCase();
+      return blob.includes(q);
+    });
+    if (!rows.length) {
+      savedHost.appendChild(
+        createElement("p", {
+          className: "text-muted",
+          text: q
+            ? "No saved quizzes match your search."
+            : "No saved quizzes yet. Save from New quiz or Create Quiz Set preview."
+        })
+      );
+      return;
+    }
+    rows.forEach((qz) => {
+      const card = createElement("article", { className: "architect-qbank-card" });
+      card.appendChild(
+        createElement("h3", {
+          className: "architect-qbank-card__title",
+          text: qz.title || "Untitled quiz"
+        })
+      );
+      card.appendChild(
+        createElement("p", {
+          className: "architect-qbank-card__meta",
+          text: `${qz.templateId || "custom"} · ${Array.isArray(qz.items) ? qz.items.length : 0} item(s) · id ${qz.id}`
+        })
+      );
+      const actions = createElement("div", { className: "architect-qbank-card__actions" });
+      actions.appendChild(
+        createElement("button", {
+          attrs: { type: "button" },
+          className: "btn btn--ghost",
+          text: "Assign",
+          onClick: () => {
+            updateState({
+              architectQuizSession: {
+                ...(getState().architectQuizSession || {}),
+                savedQuizId: qz.id
+              }
+            });
+            navigateTo("architect-quiz-assign", { container });
+          }
+        })
+      );
+      card.appendChild(actions);
+      savedHost.appendChild(card);
+    });
+  }
+
+  async function loadSavedQuizzes() {
+    savedStatus.textContent = "Loading saved quizzes…";
+    try {
+      const data = await listArchitectQuizzes();
+      savedRows = Array.isArray(data?.quizzes) ? data.quizzes : [];
+      savedStatus.textContent = `${savedRows.length} saved quiz(es)`;
+      renderSavedList();
+    } catch (err) {
+      savedRows = [];
+      savedStatus.textContent = isLikelyMissingPhpApiError(err)
+        ? "Cannot load saved quizzes from database API."
+        : err?.message || "Failed to load saved quizzes.";
+      renderSavedList();
+    }
+  }
+
   function matchesFilters(q) {
     if (wingF.value && q.wing !== wingF.value) return false;
     if (diffF.value && q.difficulty !== diffF.value) return false;
@@ -199,7 +292,7 @@ export function renderArchitectQuizHubScreen(container, context, { screenId }) {
       listHost.appendChild(
         createElement("p", {
           className: "text-muted",
-          text: "No questions yet. Use “New question” to add one, or start with the step-by-step quiz above."
+          text: "No quizzes in the list yet. Use New quiz for one item, or Create Quiz Set above for multiple."
         })
       );
       return;
@@ -221,9 +314,9 @@ export function renderArchitectQuizHubScreen(container, context, { screenId }) {
       card.appendChild(
         createElement("p", {
           className: "architect-qbank-card__meta",
-          text: `${q.wing} · ${q.difficulty} · ${q.status} · ${typeLabel} · updated ${new Date(
-            q.updatedAt || q.createdAt
-          ).toLocaleString()}`
+          text: `${q.wing} · ${q.difficulty} · ${q.status} · ${typeLabel} · ${
+            q.serverQuizId ? "on server" : "not synced yet"
+          } · updated ${new Date(q.updatedAt || q.createdAt).toLocaleString()}`
         })
       );
       if (q.tags?.length) {
@@ -252,7 +345,10 @@ export function renderArchitectQuizHubScreen(container, context, { screenId }) {
           className: "btn btn--ghost",
           text: "Preview",
           onClick: () => {
-            const item = assessmentItemFromBankQuestion(q);
+            const item = {
+              ...assessmentItemFromBankQuestion(q),
+              _bankQuestionId: q.id
+            };
             updateState({
               architectQuizSession: {
                 title: `Preview: ${q.label}`,
@@ -280,6 +376,7 @@ export function renderArchitectQuizHubScreen(container, context, { screenId }) {
               tags: [...(src.tags || [])],
               status: src.status,
               notes: src.notes || "",
+              serverQuizId: null,
               item: JSON.parse(JSON.stringify(src.item))
             };
             const r = createQuestionBankEntry(copy);
@@ -312,7 +409,9 @@ export function renderArchitectQuizHubScreen(container, context, { screenId }) {
 
   [wingF, diffF].forEach((el) => el.addEventListener("change", renderList));
   searchInp.addEventListener("input", renderList);
+  savedSearch.addEventListener("input", renderSavedList);
 
   renderList();
+  void loadSavedQuizzes();
   container.appendChild(screenEl);
 }

@@ -61,8 +61,8 @@ if ($method === 'PUT') {
 
     $json = json_encode($state, JSON_UNESCAPED_UNICODE);
     $ins = $db->prepare(
-        'INSERT INTO user_game_states (user_id, state_json, updated_at) VALUES (?, CAST(? AS JSON), CURRENT_TIMESTAMP(3))
-         ON DUPLICATE KEY UPDATE state_json = CAST(? AS JSON), updated_at = CURRENT_TIMESTAMP(3)'
+        'INSERT INTO user_game_states (user_id, state_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP(3))
+         ON DUPLICATE KEY UPDATE state_json = VALUES(state_json), updated_at = CURRENT_TIMESTAMP(3)'
     );
     $ins->bind_param('iss', $uid, $json, $json);
     $ins->execute();

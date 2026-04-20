@@ -43,6 +43,18 @@ export async function apiFetch(path, init = {}) {
     throw err;
   }
   const text = await res.text();
+  const trimmed = text.trim();
+  // SPA dev servers often return index.html with 200 for unknown paths — not valid API JSON.
+  if (
+    res.ok &&
+    trimmed.length > 0 &&
+    (trimmed.startsWith("<!") || trimmed.startsWith("<html") || trimmed.startsWith("<HTML"))
+  ) {
+    const err = new Error("The API returned a web page instead of JSON. Configure the host so /api/ runs PHP.");
+    err.status = res.status;
+    err.body = { raw: trimmed.slice(0, 400) };
+    throw err;
+  }
   let data = null;
   try {
     data = text ? JSON.parse(text) : null;

@@ -8,6 +8,7 @@ import { logScreenEntry, logEvent } from "../core/logger.js";
 import { applySceneBackground, runFadeTransition, typewriterText } from "../core/presentation.js";
 import { startSceneLoop, playUiSfx } from "../core/audioManager.js";
 import { isNonNarrativeCondition } from "../core/nonNarrative.js";
+import { confidenceFromResponseTimeMs } from "../core/confidenceFromTiming.js";
 
 // One vertical slice: intro -> 3 snippets -> puzzle -> completion
 const STEP = {
@@ -205,19 +206,6 @@ export function renderHistorySlice1Screen(container, context, { screenId }) {
         );
       });
     }
-    const confidenceSelect = createElement("select", { attrs: { required: "true" } });
-    confidenceSelect.appendChild(
-      createElement("option", {
-        attrs: { value: "", disabled: "true", selected: "true" },
-        text: "Confidence (low / medium / high)"
-      })
-    );
-    ["low", "medium", "high"].forEach((level) => {
-      confidenceSelect.appendChild(
-        createElement("option", { attrs: { value: level }, text: level })
-      );
-    });
-
     const submitText = index === wing.snippets.length - 1 ? "Continue to puzzle" : "Next snippet";
     const submitBtn = createElement("button", {
       className: "btn btn--primary",
@@ -228,18 +216,19 @@ export function renderHistorySlice1Screen(container, context, { screenId }) {
 
     form.appendChild(prompt);
     form.appendChild(select);
-    form.appendChild(confidenceSelect);
     form.appendChild(submitBtn);
     screenEl.appendChild(form);
+
+    const snippetQuestionStart = performance.now();
 
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       if (!snippetCheck) return;
       const selectedOptionId = select.value;
-      const confidence = confidenceSelect.value;
-      if (!selectedOptionId || !confidence) return;
+      if (!selectedOptionId) return;
 
-      const responseTimeMs = Math.round(performance.now() - stepStartTime);
+      const responseTimeMs = Math.round(performance.now() - snippetQuestionStart);
+      const confidence = confidenceFromResponseTimeMs(responseTimeMs);
       const correctness = selectedOptionId === snippetCheck.correctOptionId;
 
       logEvent({
@@ -252,7 +241,8 @@ export function renderHistorySlice1Screen(container, context, { screenId }) {
           type: "snippet-check-submit",
           snippetId: snippet.id,
           selectedOptionId,
-          confidence
+          confidence,
+          confidenceFrom: "response_latency_ms"
         },
         correctness,
         responseTimeMs

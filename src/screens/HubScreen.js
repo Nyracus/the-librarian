@@ -31,7 +31,7 @@ export function renderHubScreen(container, context, { screenId }) {
   screenEl.appendChild(
     createElement("p", {
       className: "screen__subtitle",
-      text: "Walk the library (pixel), or jump to chapters from the menu."
+      text: "Walk the library (pixel), open Attend quiz for activities from your architect, or use the header Menu for wings and chapters. In History, pre-test and post-test are in the side menu."
     })
   );
   if (isNonNarrativeCondition(state)) {
@@ -55,6 +55,14 @@ export function renderHubScreen(container, context, { screenId }) {
 
   screenEl.appendChild(
     createElement("button", {
+      className: "btn btn--primary",
+      text: "Attend quiz",
+      onClick: () => navigateTo("librarian-assigned-quizzes", { container })
+    })
+  );
+
+  screenEl.appendChild(
+    createElement("button", {
       className: "btn btn--ghost",
       text: "Leaderboard (signed-in)",
       onClick: () => navigateTo("leaderboard", { container })
@@ -64,15 +72,7 @@ export function renderHubScreen(container, context, { screenId }) {
   screenEl.appendChild(
     createElement("button", {
       className: "btn btn--ghost",
-      text: "History Wing 1 • Pre-test",
-      onClick: () => navigateTo("history-1-pre", { container })
-    })
-  );
-
-  screenEl.appendChild(
-    createElement("button", {
-      className: "btn btn--ghost",
-      text: "History Wing 1 • Learning",
+      text: "History Wing 1",
       onClick: () => navigateTo("history-1", { container })
     })
   );
@@ -80,27 +80,11 @@ export function renderHubScreen(container, context, { screenId }) {
   screenEl.appendChild(
     createElement("button", {
       className: "btn btn--ghost",
-      text: "History Wing 1 • Post-test",
-      onClick: () => navigateTo("history-1-post", { container })
-    })
-  );
-
-  screenEl.appendChild(
-    createElement("button", {
-      className: "btn btn--ghost",
-      text: "History Wing 1 • Delayed test",
-      onClick: () => navigateTo("history-1-delayed", { container })
-    })
-  );
-
-  screenEl.appendChild(
-    createElement("button", {
-      className: "btn btn--ghost",
-      text: "Geography Wing (pixel) • geography_wing_01",
+      text: "Geography Wing 1",
       onClick: () => {
         if (!getState().world?.geographyUnlocked) {
           window.alert(
-            "The Geography Wing unlocks after you complete History Wing I (learning module). Use Explore the library, or open History Wing 1 from here."
+            "Geography Wing 1 unlocks after you complete History Wing 1 (learning). Use Explore the library, or open History Wing 1 from here."
           );
           return;
         }

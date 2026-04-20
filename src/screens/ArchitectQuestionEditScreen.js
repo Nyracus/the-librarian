@@ -1,4 +1,4 @@
-// src/screens/ArchitectQuestionEditScreen.js — create/edit one bank question (MCQ, fill blank, dropdown, ordering).
+// src/screens/ArchitectQuestionEditScreen.js — create/edit one saved quiz (single item; MCQ, fill blank, dropdown, ordering).
 
 import { createElement } from "../components/ui.js";
 import { getState, updateState } from "../core/state.js";
@@ -8,8 +8,11 @@ import { BLANK_PLACEHOLDER, RUNNER_ITEM_TYPE_OPTIONS } from "../core/quizBuilder
 import {
   getQuestionBankEntry,
   createQuestionBankEntry,
-  updateQuestionBankEntry
+  updateQuestionBankEntry,
+  assessmentItemFromBankQuestion
 } from "../core/questionBankStore.js";
+import { saveArchitectQuiz } from "../api/architectQuizzesApi.js";
+import { isLikelyMissingPhpApiError } from "../api/http.js";
 
 const WINGS = [
   { v: "history", l: "History" },
@@ -99,20 +102,20 @@ export function renderArchitectQuestionEditScreen(container, context, { screenId
   screenEl.appendChild(
     createElement("div", {
       className: "screen__badge",
-      text: existing ? "Architect • Edit question" : "Architect • New question"
+      text: existing ? "Architect • Edit quiz" : "Architect • New quiz"
     })
   );
   screenEl.appendChild(
     createElement("h1", {
       className: "screen__title",
-      text: existing ? "Edit question" : "New question"
+      text: existing ? "Edit quiz" : "New quiz"
     })
   );
   screenEl.appendChild(
     createElement("p", {
       className: "screen__subtitle",
       text:
-        "The item body uses the same shapes as the live quiz runner (AssessmentItem): multiple_choice, fill_blank, dropdown, ordering. Pick a type first, then edit fields — metadata comes below."
+        "One saved quiz can be a single item or match the same shapes as the live runner (multiple_choice, fill_blank, dropdown, ordering). Saving stores a copy on this device and syncs a single-item quiz to your account database for assignment."
     })
   );
 
@@ -177,7 +180,7 @@ export function renderArchitectQuestionEditScreen(container, context, { screenId
 
   const typeSel = document.createElement("select");
   typeSel.className = "screen__input";
-  typeSel.setAttribute("aria-label", "Question item type (live runner)");
+  typeSel.setAttribute("aria-label", "Quiz item type (live runner)");
   RUNNER_ITEM_TYPE_OPTIONS.forEach((o) => {
     const opt = document.createElement("option");
     opt.value = o.value;
@@ -473,7 +476,7 @@ export function renderArchitectQuestionEditScreen(container, context, { screenId
   runnerBlock.appendChild(
     createElement("h2", {
       className: "architect-q-edit__runner-heading",
-      text: "Item body (same as live quiz)"
+      text: "Quiz content (same as live quiz)"
     })
   );
   runnerBlock.appendChild(typeRow);
@@ -482,7 +485,7 @@ export function renderArchitectQuestionEditScreen(container, context, { screenId
 
   const metaHeading = createElement("h2", {
     className: "architect-q-edit__meta-heading",
-    text: "Metadata & publishing"
+    text: "Metadata"
   });
 
   screenEl.appendChild(runnerBlock);
@@ -495,11 +498,12 @@ export function renderArchitectQuestionEditScreen(container, context, { screenId
     createElement("button", {
       attrs: { type: "button" },
       className: "btn btn--primary",
-      text: existing ? "Save changes" : "Save to bank",
-      onClick: () => {
+      text: "Save quiz",
+      onClick: async () => {
         const label = labelInput.value.trim();
         if (!label) {
           statusEl.textContent = "Label is required.";
+          statusEl.className = "architect-q-edit__status";
           return;
         }
         const tags = tagsInput.value
@@ -532,6 +536,11 @@ export function renderArchitectQuestionEditScreen(container, context, { screenId
           item
         };
 
+        const prevServerQuizId =
+          existing?.serverQuizId && !String(existing.serverQuizId).startsWith("local_")
+            ? String(existing.serverQuizId)
+            : null;
+
         let result;
         if (existing) {
           result = updateQuestionBankEntry(existing.id, base);
@@ -541,28 +550,62 @@ export function renderArchitectQuestionEditScreen(container, context, { screenId
 
         if (!result.ok) {
           statusEl.textContent = (result.errors && result.errors.join(" ")) || "Validation failed.";
+          statusEl.className = "architect-q-edit__status";
           return;
         }
 
-        logEvent({
-          participantId: state.participantId,
-          condition: state.condition,
-          phase: state.phase,
-          screenId,
-          itemId: result.entry.id,
-          response: {
-            type: "architect-question-save",
-            wing,
-            difficulty,
-            itemType: item.type
-          },
-          correctness: null,
-          responseTimeMs: null
-        });
+        const bankId = result.entry.id;
+        const saved = getQuestionBankEntry(bankId);
+        if (!saved) {
+          statusEl.textContent = "Entry not found.";
+          statusEl.className = "architect-q-edit__status text-danger";
+          return;
+        }
 
-        updateState({ architectQuestionEditId: null });
-        statusEl.textContent = "Saved.";
-        navigateTo("architect-quiz-hub", { container });
+        const itemPayload = { ...assessmentItemFromBankQuestion(saved) };
+        itemPayload.id = saved.item.id;
+        itemPayload._bankQuestionId = saved.id;
+
+        statusEl.textContent = "Saving…";
+        statusEl.className = "architect-q-edit__status";
+
+        try {
+          const data = await saveArchitectQuiz({
+            id: prevServerQuizId || undefined,
+            title: saved.label,
+            templateId: "question-bank",
+            items: [itemPayload]
+          });
+          const sid = data.id;
+          updateQuestionBankEntry(bankId, { serverQuizId: sid });
+
+          logEvent({
+            participantId: state.participantId,
+            condition: state.condition,
+            phase: state.phase,
+            screenId,
+            itemId: bankId,
+            response: {
+              type: "architect-question-save",
+              wing,
+              difficulty,
+              itemType: item.type,
+              quizId: sid
+            },
+            correctness: null,
+            responseTimeMs: null
+          });
+
+          updateState({ architectQuestionEditId: null });
+          statusEl.textContent = "Saved.";
+          statusEl.className = "architect-q-edit__status text-success";
+          navigateTo("architect-quiz-hub", { container });
+        } catch (err) {
+          statusEl.textContent = isLikelyMissingPhpApiError(err)
+            ? "Could not reach the database. Check PHP and MySQL."
+            : err?.message || "Could not save quiz.";
+          statusEl.className = "architect-q-edit__status text-danger";
+        }
       }
     })
   );

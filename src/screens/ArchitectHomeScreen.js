@@ -29,7 +29,7 @@ export function renderArchitectHomeScreen(container, context, { screenId }) {
     createElement("p", {
       className: "screen__subtitle",
       text:
-        "Build quizzes and question items in one place. Use a separate area to ask fabricators for narrative versions of non-narrative materials and to track requests."
+        "Author quizzes (single items or full sets), assign them to librarians, and manage fabricator requests from here."
     })
   );
 
@@ -42,10 +42,11 @@ export function renderArchitectHomeScreen(container, context, { screenId }) {
       })
     );
 
-  add("Create quizzes & questions", "architect-quiz-hub", true);
+  add("Quizzes hub", "architect-quiz-hub", true);
+  add("Assign quiz to librarians", "architect-quiz-assign");
+  add("Assign narrative wings (tileset rooms)", "architect-wing-assign");
   add("Requests & fabricators (narrative handoff)", "architect-requests");
   add("Review fabricator submissions", "architect-approval");
-  add("AI Lab (optional)", "openai-lab");
 
   screenEl.appendChild(
     createElement("p", {

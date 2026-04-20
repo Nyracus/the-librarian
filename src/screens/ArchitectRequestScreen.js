@@ -6,10 +6,15 @@ import { logScreenEntry, logEvent } from "../core/logger.js";
 import { navigateTo } from "../core/router.js";
 import {
   listArchitectRequests,
-  addArchitectRequest,
   removeArchitectRequest,
   exportArchitectRequestsJson
 } from "../core/architectRequestsStore.js";
+import {
+  createArchitectRequest,
+  listArchitectRequestsApi,
+  searchFabricators,
+  assignRequestToFabricators
+} from "../api/architectQuizzesApi.js";
 import {
   effectiveWorkflowStatus,
   workflowStatusLabel,
@@ -17,6 +22,7 @@ import {
   exportCombinedHandoffJson,
   removeWorkflowForRequest
 } from "../core/fabricatorWorkflowStore.js";
+import { isLikelyMissingPhpApiError } from "../api/http.js";
 
 export function renderArchitectRequestScreen(container, context, { screenId }) {
   updateState({ currentScreenId: screenId, phase: "learning" });
@@ -48,7 +54,7 @@ export function renderArchitectRequestScreen(container, context, { screenId }) {
     createElement("p", {
       className: "screen__subtitle",
       text:
-        "Ask for narrative versions of non-narrative quizzes or other content. Requests stay on this device. Fabricators pick up work from their queue; you review submissions when ready."
+        "Ask for narrative versions of non-narrative quizzes or other content. Requests save to the database and can be assigned to Fabricators."
     })
   );
 
@@ -185,28 +191,89 @@ export function renderArchitectRequestScreen(container, context, { screenId }) {
   );
   formWrap.appendChild(notesTa);
 
+  const fabSearch = document.createElement("input");
+  fabSearch.type = "search";
+  fabSearch.className = "screen__input";
+  fabSearch.placeholder = "Search fabricators by email or id…";
+  formWrap.appendChild(
+    createElement("label", {
+      className: "architect-request-label",
+      text: "Assign fabricators (optional)"
+    })
+  );
+  formWrap.appendChild(fabSearch);
+  const fabHost = createElement("div", { className: "architect-quiz-assign__librarians" });
+  formWrap.appendChild(fabHost);
+
   const statusEl = createElement("p", { className: "architect-request-status", text: "" });
+  /** @type {Set<number>} */
+  const selectedFabricators = new Set();
+
+  function renderFabricators(rows) {
+    fabHost.innerHTML = "";
+    rows.forEach((u) => {
+      const id = Number(u.id);
+      if (!Number.isFinite(id) || id < 1) return;
+      const row = createElement("label", { className: "architect-quiz-assign__lib-row" });
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = selectedFabricators.has(id);
+      cb.addEventListener("change", () => {
+        if (cb.checked) selectedFabricators.add(id);
+        else selectedFabricators.delete(id);
+      });
+      row.appendChild(cb);
+      row.appendChild(createElement("span", { text: `${u.email || `user #${id}`} (id ${id})` }));
+      fabHost.appendChild(row);
+    });
+  }
+
+  async function loadFabricators() {
+    try {
+      const data = await searchFabricators(fabSearch.value);
+      renderFabricators(Array.isArray(data?.fabricators) ? data.fabricators : []);
+    } catch (err) {
+      fabHost.innerHTML = "";
+      statusEl.textContent = isLikelyMissingPhpApiError(err)
+        ? "Cannot load fabricators from API."
+        : err?.message || "Failed to load fabricators.";
+    }
+  }
 
   const submitBtn = createElement("button", {
     attrs: { type: "button" },
     className: "btn btn--primary",
     text: "Submit request",
-    onClick: () => {
+    onClick: async () => {
       const title = titleInput.value.trim();
       if (!title) {
         statusEl.textContent = "Please enter a title.";
         return;
       }
       const email = state.auth?.email || "";
-      const entry = addArchitectRequest({
-        title,
-        wing: wingSel.value,
-        difficulty: diffSel.value,
-        framing: frameSel.value,
-        tags: tagsInput.value.trim(),
-        notes: notesTa.value.trim(),
-        requesterHint: email ? `Signed in: ${email}` : "Anonymous / not signed in"
-      });
+      statusEl.textContent = "Saving request…";
+      let entry;
+      try {
+        const data = await createArchitectRequest({
+          title,
+          wing: wingSel.value,
+          difficulty: diffSel.value,
+          framing: frameSel.value,
+          tags: tagsInput.value.trim(),
+          notes: notesTa.value.trim(),
+          requesterHint: email ? `Signed in: ${email}` : "Anonymous / not signed in"
+        });
+        entry = { id: data?.id || "", title };
+        const fabIds = Array.from(selectedFabricators);
+        if (entry.id && fabIds.length) {
+          await assignRequestToFabricators(String(entry.id), fabIds);
+        }
+      } catch (err) {
+        statusEl.textContent = isLikelyMissingPhpApiError(err)
+          ? "Cannot reach the database API."
+          : err?.message || "Could not save request.";
+        return;
+      }
       logEvent({
         participantId: state.participantId,
         condition: state.condition,
@@ -226,8 +293,10 @@ export function renderArchitectRequestScreen(container, context, { screenId }) {
       titleInput.value = "";
       tagsInput.value = "";
       notesTa.value = "";
-      statusEl.textContent = "Request saved on this device.";
-      renderList();
+      selectedFabricators.clear();
+      statusEl.textContent = "Request saved and assigned.";
+      await loadFabricators();
+      await renderList();
     }
   });
 
@@ -237,7 +306,7 @@ export function renderArchitectRequestScreen(container, context, { screenId }) {
 
   const listHost = createElement("div", { className: "architect-request-list-host" });
   screenEl.appendChild(
-    createElement("h2", { className: "architect-request-list-title", text: "Your requests (this browser)" })
+    createElement("h2", { className: "architect-request-list-title", text: "Your requests (database)" })
   );
   screenEl.appendChild(listHost);
 
@@ -300,9 +369,15 @@ export function renderArchitectRequestScreen(container, context, { screenId }) {
   );
   screenEl.appendChild(actions);
 
-  function renderList() {
+  async function renderList() {
     listHost.innerHTML = "";
-    const rows = listArchitectRequests();
+    let rows = [];
+    try {
+      const data = await listArchitectRequestsApi();
+      rows = Array.isArray(data?.requests) ? data.requests : [];
+    } catch {
+      rows = listArchitectRequests();
+    }
     if (!rows.length) {
       listHost.appendChild(
         createElement("p", {
@@ -313,8 +388,8 @@ export function renderArchitectRequestScreen(container, context, { screenId }) {
       return;
     }
     rows.forEach((r) => {
-      const wfSt = effectiveWorkflowStatus(r.id);
-      const wf = getWorkflowByRequestId(r.id);
+      const wfSt = r?.workflow?.status || effectiveWorkflowStatus(r.id);
+      const wf = r?.workflow || getWorkflowByRequestId(r.id);
       const card = createElement("article", { className: "architect-request-card" });
       card.appendChild(
         createElement("h3", { className: "architect-request-card__title", text: r.title })
@@ -358,7 +433,7 @@ export function renderArchitectRequestScreen(container, context, { screenId }) {
           onClick: () => {
             removeArchitectRequest(r.id);
             removeWorkflowForRequest(r.id);
-            renderList();
+            void renderList();
             statusEl.textContent = "Request removed.";
           }
         })
@@ -367,6 +442,16 @@ export function renderArchitectRequestScreen(container, context, { screenId }) {
     });
   }
 
-  renderList();
+  fabSearch.addEventListener("input", debounce(() => void loadFabricators(), 300));
+  void loadFabricators();
+  void renderList();
   container.appendChild(screenEl);
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
 }

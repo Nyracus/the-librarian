@@ -24,3 +24,83 @@ function db(): mysqli
     $conn->set_charset('utf8mb4');
     return $conn;
 }
+
+/**
+ * Resolve a table in the current DB by required column set.
+ * Useful when legacy imports used slightly different table names.
+ *
+ * @param mysqli $db
+ * @param string[] $requiredColumns
+ * @param string[] $preferredNames
+ * @return string|null
+ */
+function resolve_table_with_columns(mysqli $db, array $requiredColumns, array $preferredNames = []): ?string
+{
+    $required = array_values(
+        array_unique(
+            array_filter(
+                array_map(
+                    static fn($x) => is_string($x) ? trim($x) : '',
+                    $requiredColumns
+                ),
+                static fn(string $x) => $x !== ''
+            )
+        )
+    );
+    if (count($required) === 0) {
+        return null;
+    }
+
+    $escaped = array_map(
+        static fn(string $c) => "'" . $db->real_escape_string($c) . "'",
+        $required
+    );
+    $sql = 'SELECT table_name, column_name
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND column_name IN (' . implode(',', $escaped) . ')';
+    $res = $db->query($sql);
+    if (!$res) {
+        return null;
+    }
+
+    $byTable = [];
+    while ($row = $res->fetch_assoc()) {
+        $t = isset($row['table_name']) ? (string) $row['table_name'] : '';
+        $c = isset($row['column_name']) ? (string) $row['column_name'] : '';
+        if ($t === '' || $c === '') {
+            continue;
+        }
+        if (!isset($byTable[$t])) {
+            $byTable[$t] = [];
+        }
+        $byTable[$t][$c] = true;
+    }
+
+    $matches = [];
+    foreach ($byTable as $table => $cols) {
+        $ok = true;
+        foreach ($required as $req) {
+            if (!isset($cols[$req])) {
+                $ok = false;
+                break;
+            }
+        }
+        if ($ok) {
+            $matches[] = $table;
+        }
+    }
+
+    if (count($matches) === 0) {
+        return null;
+    }
+
+    foreach ($preferredNames as $pref) {
+        if (is_string($pref) && in_array($pref, $matches, true)) {
+            return $pref;
+        }
+    }
+
+    sort($matches);
+    return $matches[0];
+}

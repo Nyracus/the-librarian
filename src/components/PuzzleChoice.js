@@ -3,6 +3,7 @@
 import { createElement, normalizeWhitespace } from "./ui.js";
 import { logEvent } from "../core/logger.js";
 import { playUiSfx } from "../core/audioManager.js";
+import { confidenceFromResponseTimeMs } from "../core/confidenceFromTiming.js";
 
 /**
  * Reusable puzzle component.
@@ -73,20 +74,6 @@ export function renderChoicePuzzle(container, { puzzle, context, onComplete }) {
     attrs: { type: "submit" }
   });
 
-  const confidenceSelect = createElement("select", { attrs: { required: "true" } });
-  confidenceSelect.appendChild(
-    createElement("option", {
-      attrs: { value: "", disabled: "true", selected: "true" },
-      text: "Confidence (low / medium / high)"
-    })
-  );
-  ["low", "medium", "high"].forEach((level) => {
-    confidenceSelect.appendChild(
-      createElement("option", { attrs: { value: level }, text: level })
-    );
-  });
-
-  form.appendChild(confidenceSelect);
   form.appendChild(submitBtn);
 
   wrapper.appendChild(form);
@@ -111,8 +98,7 @@ export function renderChoicePuzzle(container, { puzzle, context, onComplete }) {
     event.preventDefault();
 
     const chosenOrderIds = selects.map((s) => s.value).filter(Boolean);
-    const confidence = confidenceSelect.value;
-    if (chosenOrderIds.length !== puzzle.correctOrder.length || !confidence) {
+    if (chosenOrderIds.length !== puzzle.correctOrder.length) {
       feedbackEl.textContent = "Please select an item for each position.";
       feedbackEl.className = "screen__feedback text-danger";
       wrapper.classList.remove("feedback-correct", "feedback-incorrect");
@@ -122,6 +108,7 @@ export function renderChoicePuzzle(container, { puzzle, context, onComplete }) {
     }
 
     const responseTimeMs = Math.round(performance.now() - startTime);
+    const confidence = confidenceFromResponseTimeMs(responseTimeMs);
     const correctness = arraysEqual(chosenOrderIds, puzzle.correctOrder);
 
     logEvent({
@@ -130,7 +117,12 @@ export function renderChoicePuzzle(container, { puzzle, context, onComplete }) {
       phase: context.phase,
       screenId: context.screenId,
       itemId: puzzle.id,
-      response: { type: "puzzle-submit", chosenOrderIds, confidence },
+      response: {
+        type: "puzzle-submit",
+        chosenOrderIds,
+        confidence,
+        confidenceFrom: "response_latency_ms"
+      },
       correctness,
       responseTimeMs
     });

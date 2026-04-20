@@ -26,6 +26,8 @@ function createDefaultState() {
     world: {
       exploreMode: false,
       room: "hub",
+      /** When room === "fabricator_wing", which generated wing layout to render. */
+      fabricatorWingActiveId: null,
       historyWingComplete: false,
       geographyUnlocked: false,
       geographyReturnRoute: null,
@@ -38,14 +40,18 @@ function createDefaultState() {
       playerDevice: "pc", // "pc" | "mobile-tablet"
       controlScheme: "auto" // "auto" | "keyboard" | "touch"
     },
-    /** @type {null | { title: string; templateId: string; items: object[]; builtAt: string }} */
+    /** @type {null | { title: string; templateId: string; items: object[]; builtAt: string; savedQuizId?: string; draftLocalQuizId?: string }} */
     architectQuizSession: null,
+    /** Librarian: session payload for taking an architect-assigned quiz. */
+    librarianQuizPlaySession: null,
     /** Wizard state while composing a custom quiz (topic + per-question types → step-by-step items). */
     architectQuizBuild: null,
     /** Architect CMS: question id being edited, or null for new. */
     architectQuestionEditId: null,
     /** Fabricator workflow: which Architect request id is open in detail, or null. */
     fabricatorActiveRequestId: null,
+    /** Fabricator tileset wing builder: linked architect request id, or null. */
+    fabricatorWingBuilderRequestId: null,
     /** After consent/setup, jump here instead of hub (e.g. chapter chosen from main menu). */
     pendingChapterRoute: null,
     /** Set at sign-in: librarian | architect | fabricator */
@@ -144,6 +150,10 @@ export function replaceState(nextState) {
       nextState.architectQuizSession !== undefined
         ? nextState.architectQuizSession
         : createDefaultState().architectQuizSession,
+    librarianQuizPlaySession:
+      nextState.librarianQuizPlaySession !== undefined
+        ? nextState.librarianQuizPlaySession
+        : createDefaultState().librarianQuizPlaySession,
     architectQuizBuild:
       nextState.architectQuizBuild !== undefined
         ? nextState.architectQuizBuild
@@ -156,6 +166,10 @@ export function replaceState(nextState) {
       nextState.fabricatorActiveRequestId !== undefined
         ? nextState.fabricatorActiveRequestId
         : createDefaultState().fabricatorActiveRequestId,
+    fabricatorWingBuilderRequestId:
+      nextState.fabricatorWingBuilderRequestId !== undefined
+        ? nextState.fabricatorWingBuilderRequestId
+        : createDefaultState().fabricatorWingBuilderRequestId,
     pendingChapterRoute:
       nextState.pendingChapterRoute !== undefined
         ? nextState.pendingChapterRoute

@@ -423,13 +423,14 @@ export function renderArchitectQuizBuildScreen(container, context, { screenId })
         if (idx >= n - 1) {
           const title =
             (quizTitle && String(quizTitle).trim()) || `Quiz — ${topic}`;
+          const builtAt = new Date().toISOString();
           updateState({
             architectQuizSession: {
               title,
               templateId: "custom-classroom",
               topic,
               items: nextItems,
-              builtAt: new Date().toISOString()
+              builtAt
             },
             architectQuizBuild: null
           });

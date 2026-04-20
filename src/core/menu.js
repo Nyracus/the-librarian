@@ -14,6 +14,11 @@ import { signOutGoogle } from "../auth/googleAuth.js";
 import { CHAPTERS } from "./chapters.js";
 import { ROLE, chapterIdsForRole } from "./roles.js";
 import { getSlotPayload, getSlotStorageKey, setSlotPayload } from "./saveSlots.js";
+import {
+  listWingIdsForLibrarianEmail,
+  refreshAssignedWingsFromApi
+} from "./fabricatorWingAssignmentStore.js";
+import { getFabricatorWing } from "./fabricatorWingStore.js";
 
 export { CHAPTERS };
 const MAX_PREVIEW_ROWS = 8;
@@ -120,6 +125,19 @@ function populateMenuChapterSelect(select) {
     opt.dataset.requiresGeography = chapter.requiresGeography ? "1" : "";
     select.appendChild(opt);
   });
+  if (role === ROLE.LIBRARIAN) {
+    const email = state.auth?.email || "";
+    const wingIds = listWingIdsForLibrarianEmail(email);
+    wingIds.forEach((wid) => {
+      const wing = getFabricatorWing(wid);
+      if (!wing) return;
+      const opt = document.createElement("option");
+      opt.value = `wing:${wid}`;
+      opt.textContent = `Narrative wing: ${wing.wingName}`;
+      opt.dataset.dynamicWing = "1";
+      select.appendChild(opt);
+    });
+  }
 }
 
 function createSectionSettings() {
@@ -316,6 +334,19 @@ function createSectionChapter() {
   goBtn.addEventListener("click", () => {
     const route = select.value;
     if (!route) return;
+    if (route.startsWith("wing:")) {
+      const wingId = route.slice("wing:".length);
+      updateState({
+        world: {
+          ...getState().world,
+          room: "fabricator_wing",
+          fabricatorWingActiveId: wingId
+        }
+      });
+      playUiSfx("click");
+      window.location.hash = "#library-world";
+      return;
+    }
     const opt = select.querySelector(`option[value="${route}"]`);
     if (opt && opt.disabled) {
       window.alert(
@@ -615,6 +646,13 @@ function refreshMenuState(panel) {
 
   const chapterSelect = panel.querySelector("#menu-chapter-select");
   if (chapterSelect) {
+    if ((state.userRole ?? ROLE.LIBRARIAN) === ROLE.LIBRARIAN) {
+      void refreshAssignedWingsFromApi()
+        .then(() => {
+          populateMenuChapterSelect(chapterSelect);
+        })
+        .catch(() => {});
+    }
     populateMenuChapterSelect(chapterSelect);
     const role = state.userRole ?? ROLE.LIBRARIAN;
     if (role === ROLE.LIBRARIAN) {

@@ -26,6 +26,8 @@ const LIBRARIAN = new Set([
   "history-1-post",
   "history-1-delayed",
   "geography-game",
+  "librarian-assigned-quizzes",
+  "librarian-quiz-play",
   ...SETUP_LIBRARIAN
 ]);
 
@@ -37,15 +39,16 @@ const ARCHITECT = new Set([
   "architect-quiz-build",
   "architect-quiz-run",
   "architect-question-edit",
-  "architect-quiz-bank-pick",
-  "architect-approval",
-  "openai-lab"
+  "architect-quiz-assign",
+  "architect-wing-assign",
+  "architect-approval"
 ]);
 
 const FABRICATOR = new Set([
   "fabricator-home",
   "fabricator-queue",
   "fabricator-request-detail",
+  "fabricator-wing-builder",
   "fabricator-users"
 ]);
 
@@ -97,9 +100,10 @@ export function chapterIdsForRole(role) {
     return [
       "architect-home",
       "architect-quiz-hub",
+      "architect-quiz-assign",
+      "architect-wing-assign",
       "architect-requests",
-      "architect-approval",
-      "openai-lab"
+      "architect-approval"
     ];
   }
   if (role === ROLE.FABRICATOR) {
@@ -107,9 +111,10 @@ export function chapterIdsForRole(role) {
       "fabricator-home",
       "fabricator-queue",
       "fabricator-request-detail",
+      "fabricator-wing-builder",
       "fabricator-users"
     ];
   }
-  // Librarian "chapters" are wings only; pre/post/delayed are reached inside History via the side UI.
-  return ["history-1", "geography-game"];
+  // Librarian "chapters" are wings plus assigned architect quizzes.
+  return ["history-1", "geography-game", "librarian-assigned-quizzes"];
 }

@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "openai-proxy": "node scripts/openai-proxy.mjs"
+    "openai-proxy": "node scripts/openai-proxy.mjs",
+    "dev": "php -S 127.0.0.1:8080 router.php",
+    "dev:php": "php -S 127.0.0.1:8080 router.php"
   }
 }

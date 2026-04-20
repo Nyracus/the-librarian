@@ -68,3 +68,23 @@ function require_fabricator(array $me): void
         json_response(403, ['error' => 'Fabricator admin access required']);
     }
 }
+
+/**
+ * @param array{firebase_uid: string, email: ?string, db_user_id: int, user_role: ?string} $me
+ */
+function require_architect(array $me): void
+{
+    if (($me['user_role'] ?? null) !== 'architect') {
+        json_response(403, ['error' => 'Architect access required']);
+    }
+}
+
+/**
+ * @param array{firebase_uid: string, email: ?string, db_user_id: int, user_role: ?string} $me
+ */
+function require_librarian(array $me): void
+{
+    if (($me['user_role'] ?? null) !== 'librarian') {
+        json_response(403, ['error' => 'Librarian access required']);
+    }
+}

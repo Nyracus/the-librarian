@@ -38,7 +38,7 @@
 .puzzle-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.82);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -314,6 +314,11 @@
   border: 1px solid #4b5563;
   border-radius: 6px;
   color: #e5e7eb;
+}
+
+/* Ensure hidden dialogue never leaves an empty dark bar in explore mode. */
+.library-world-dialogue[hidden] {
+  display: none !important;
 }
 
 .library-world-dialogue__text {
@@ -658,7 +663,7 @@
   position: fixed;
   inset: 0;
   z-index: 210;
-  background: rgba(2, 6, 23, 0.78);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;

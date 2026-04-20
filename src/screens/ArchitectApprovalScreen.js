@@ -4,13 +4,11 @@ import { createElement } from "../components/ui.js";
 import { getState, updateState } from "../core/state.js";
 import { logScreenEntry, logEvent } from "../core/logger.js";
 import { navigateTo } from "../core/router.js";
-import { listArchitectRequests } from "../core/architectRequestsStore.js";
 import {
-  getWorkflowByRequestId,
-  architectApprove,
-  architectRequestRevision,
-  architectReject
-} from "../core/fabricatorWorkflowStore.js";
+  listReviewRequestsForArchitect,
+  reviewRequestByArchitect
+} from "../api/architectQuizzesApi.js";
+import { isLikelyMissingPhpApiError } from "../api/http.js";
 
 export function renderArchitectApprovalScreen(container, context, { screenId }) {
   updateState({ currentScreenId: screenId, phase: "learning" });
@@ -73,15 +71,24 @@ export function renderArchitectApprovalScreen(container, context, { screenId }) 
   );
   screenEl.appendChild(footer);
 
+  /** @type {Array<any>} */
+  let requestRows = [];
+
   function pendingRows() {
-    return listArchitectRequests().filter((r) => {
-      const w = getWorkflowByRequestId(r.id);
-      return w && w.status === "submitted_for_review";
-    });
+    return requestRows;
   }
 
-  function renderList() {
+  async function renderList() {
     listHost.innerHTML = "";
+    try {
+      const data = await listReviewRequestsForArchitect();
+      requestRows = Array.isArray(data?.rows) ? data.rows : [];
+    } catch (err) {
+      requestRows = [];
+      statusEl.textContent = isLikelyMissingPhpApiError(err)
+        ? "Could not load review queue from API."
+        : err?.message || "Could not load review queue.";
+    }
     const rows = pendingRows();
     if (!rows.length) {
       listHost.appendChild(
@@ -94,7 +101,7 @@ export function renderArchitectApprovalScreen(container, context, { screenId }) 
     }
 
     rows.forEach((r) => {
-      const w = getWorkflowByRequestId(r.id);
+      const w = r.workflow || {};
       const card = createElement("article", { className: "architect-approval-card" });
       card.appendChild(
         createElement("h3", { className: "architect-approval-card__title", text: r.title })
@@ -142,11 +149,14 @@ export function renderArchitectApprovalScreen(container, context, { screenId }) 
           attrs: { type: "button" },
           className: "btn btn--primary",
           text: "Approve",
-          onClick: () => {
+          onClick: async () => {
             const text = notesTa.value.trim();
-            const result = architectApprove(r.id, text);
-            if (!result) {
-              statusEl.textContent = "Could not approve — wrong state?";
+            try {
+              await reviewRequestByArchitect({ requestId: r.id, decision: "approve", notes: text });
+            } catch (err) {
+              statusEl.textContent = isLikelyMissingPhpApiError(err)
+                ? "Could not approve (API unavailable)."
+                : err?.message || "Approve failed.";
               return;
             }
             logEvent({
@@ -159,8 +169,8 @@ export function renderArchitectApprovalScreen(container, context, { screenId }) 
               correctness: null,
               responseTimeMs: null
             });
-            statusEl.textContent = `Approved: ${r.title}`;
-            renderList();
+            statusEl.textContent = `Approved: ${r.title}. Published to librarians.`;
+            void renderList();
           }
         })
       );
@@ -169,15 +179,18 @@ export function renderArchitectApprovalScreen(container, context, { screenId }) 
           attrs: { type: "button" },
           className: "btn btn--ghost",
           text: "Request revision",
-          onClick: () => {
+          onClick: async () => {
             const text = notesTa.value.trim();
             if (!text) {
               statusEl.textContent = "Add feedback for the Fabricator before requesting revision.";
               return;
             }
-            const result = architectRequestRevision(r.id, text);
-            if (!result) {
-              statusEl.textContent = "Could not update — wrong state?";
+            try {
+              await reviewRequestByArchitect({ requestId: r.id, decision: "revision", notes: text });
+            } catch (err) {
+              statusEl.textContent = isLikelyMissingPhpApiError(err)
+                ? "Could not request revision (API unavailable)."
+                : err?.message || "Revision request failed.";
               return;
             }
             logEvent({
@@ -191,7 +204,7 @@ export function renderArchitectApprovalScreen(container, context, { screenId }) 
               responseTimeMs: null
             });
             statusEl.textContent = `Revision requested: ${r.title}`;
-            renderList();
+            void renderList();
           }
         })
       );
@@ -200,15 +213,18 @@ export function renderArchitectApprovalScreen(container, context, { screenId }) 
           attrs: { type: "button" },
           className: "btn btn--ghost",
           text: "Reject",
-          onClick: () => {
+          onClick: async () => {
             const text = notesTa.value.trim();
             if (!text) {
               statusEl.textContent = "Add a short reason before rejecting.";
               return;
             }
-            const result = architectReject(r.id, text);
-            if (!result) {
-              statusEl.textContent = "Could not reject — wrong state?";
+            try {
+              await reviewRequestByArchitect({ requestId: r.id, decision: "reject", notes: text });
+            } catch (err) {
+              statusEl.textContent = isLikelyMissingPhpApiError(err)
+                ? "Could not reject (API unavailable)."
+                : err?.message || "Reject failed.";
               return;
             }
             logEvent({
@@ -222,7 +238,7 @@ export function renderArchitectApprovalScreen(container, context, { screenId }) 
               responseTimeMs: null
             });
             statusEl.textContent = `Rejected: ${r.title}`;
-            renderList();
+            void renderList();
           }
         })
       );
@@ -231,6 +247,6 @@ export function renderArchitectApprovalScreen(container, context, { screenId }) 
     });
   }
 
-  renderList();
+  void renderList();
   container.appendChild(screenEl);
 }

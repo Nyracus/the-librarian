@@ -23,7 +23,7 @@ $db->begin_transaction();
 try {
     $ins = $db->prepare(
         'INSERT INTO research_logs (user_id, local_id, payload_json, created_at)
-         VALUES (?, ?, CAST(? AS JSON), ?)'
+         VALUES (?, ?, ?, ?)'
     );
     $n = 0;
     foreach ($entries as $e) {
